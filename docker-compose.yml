@@ -49,6 +49,29 @@ services:
       timeout: 5s
       retries: 5
 
+  migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: atobot-backend:local
+    restart: "no"
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://atobot:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/atobot
+      APP_ROLE: migrate
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+
   backend:
     build:
       context: ./backend
@@ -80,8 +103,8 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     command: ["python", "start_backend.py"]
@@ -115,7 +138,9 @@ services:
       redis:
         condition: service_healthy
       backend:
-        condition: service_started
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     command: ["python", "start_worker.py"]
 
   frontend:

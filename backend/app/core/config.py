@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     stale_refresh_session_days: int = 3
     stale_ingestion_run_hours: int = 1
     algorithm: str = "HS256"
+    jwt_issuer: str = "ato-bot"
+    jwt_audience: str = "ato-bot-api"
 
     # Database
     database_url: str
@@ -76,6 +78,10 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.allowed_origins.split(",")]
 
     def validate_security_posture(self) -> None:
+        if self.algorithm != "HS256":
+            raise ValueError("ATO Bot currently supports only the HS256 JWT algorithm.")
+        if not self.jwt_issuer.strip() or not self.jwt_audience.strip():
+            raise ValueError("JWT_ISSUER and JWT_AUDIENCE must not be empty.")
         if self.app_env != "production":
             return
         weak_secrets = {"changeme", "secret", "dev-secret", "development", "ato-bot-secret"}

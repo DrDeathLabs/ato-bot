@@ -2,12 +2,15 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import bcrypt
+import jwt
 import pyotp
-from jose import JWTError, jwt
+from jwt.exceptions import InvalidTokenError
 
 from app.core.config import get_settings
 
 settings = get_settings()
+
+TokenValidationError = InvalidTokenError
 
 
 # ── Password ──────────────────────────────────────────────────────────────────
@@ -23,8 +26,18 @@ def verify_password(plain: str, hashed: str) -> bool:
 # ── JWT ───────────────────────────────────────────────────────────────────────
 
 def create_access_token(subject: str, role: str) -> str:
-    expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
-    payload = {"sub": subject, "role": role, "exp": expire, "type": "access"}
+    now = datetime.now(UTC)
+    expire = now + timedelta(minutes=settings.access_token_expire_minutes)
+    payload = {
+        "sub": subject,
+        "role": role,
+        "iss": settings.jwt_issuer,
+        "aud": settings.jwt_audience,
+        "iat": now,
+        "jti": uuid4().hex,
+        "exp": expire,
+        "type": "access",
+    }
     return jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
 
 
@@ -33,6 +46,8 @@ def create_refresh_token(subject: str) -> str:
     expire = now + timedelta(days=settings.refresh_token_expire_days)
     payload = {
         "sub": subject,
+        "iss": settings.jwt_issuer,
+        "aud": settings.jwt_audience,
         "exp": expire,
         "iat": now,
         "jti": uuid4().hex,
@@ -42,8 +57,20 @@ def create_refresh_token(subject: str) -> str:
 
 
 def decode_token(token: str) -> dict:
-    """Raises JWTError if invalid or expired."""
-    return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    """Decode a token only when its signature and required claims are valid."""
+    return jwt.decode(
+        token,
+        settings.secret_key,
+        algorithms=[settings.algorithm],
+        audience=settings.jwt_audience,
+        issuer=settings.jwt_issuer,
+        options={
+            "require": ["aud", "exp", "iat", "iss", "jti", "sub", "type"],
+            "verify_signature": True,
+            "verify_exp": True,
+            "verify_iat": True,
+        },
+    )
 
 
 # ── TOTP MFA ──────────────────────────────────────────────────────────────────

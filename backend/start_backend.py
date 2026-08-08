@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import socket
-import subprocess
 import sys
 import time
 from urllib.parse import urlparse
@@ -28,18 +27,6 @@ def _wait_for_host(host: str, port: int, *, timeout_seconds: int = 90, interval_
     raise RuntimeError(f"Timed out waiting for {host}:{port}: {last_error or 'unknown error'}")
 
 
-def _run_alembic_with_retries(*, attempts: int = 30, interval_seconds: int = 2) -> None:
-    for attempt in range(1, attempts + 1):
-        _log(f"Running Alembic upgrade (attempt {attempt}/{attempts})")
-        result = subprocess.run(["alembic", "upgrade", "head"], check=False)
-        if result.returncode == 0:
-            _log("Alembic upgrade succeeded")
-            return
-        _log(f"Alembic upgrade failed with exit code {result.returncode}")
-        time.sleep(interval_seconds)
-    raise RuntimeError("Alembic upgrade did not succeed after retry budget was exhausted")
-
-
 def main() -> int:
     database_url = os.environ.get("DATABASE_URL", "")
     redis_url = os.environ.get("REDIS_URL", "")
@@ -53,8 +40,6 @@ def main() -> int:
         parsed_redis = urlparse(redis_url)
         if parsed_redis.hostname and parsed_redis.port:
             _wait_for_host(parsed_redis.hostname, parsed_redis.port)
-
-    _run_alembic_with_retries()
 
     _log("Starting uvicorn")
     os.execvp(

@@ -4,12 +4,11 @@ import time
 from typing import Callable
 
 from fastapi import Request, Response
-from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
-from app.core.security import decode_token
+from app.core.security import TokenValidationError, decode_token
 
 settings = get_settings()
 
@@ -24,7 +23,7 @@ def _extract_user_id(request: Request) -> int | None:
     try:
         payload = decode_token(auth.removeprefix("Bearer "))
         return int(payload.get("sub", 0)) or None
-    except (JWTError, ValueError):
+    except (TokenValidationError, ValueError):
         return None
 
 
