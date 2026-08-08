@@ -26,6 +26,17 @@ from app.services.reports.oscal_validation import OSCAL_VERSION
 settings = get_settings()
 
 
+def _frozen_document_ids(scope_json: dict | None) -> list[int]:
+    """Return document IDs from the approved frozen evidence scope."""
+    scope = scope_json or {}
+    frozen_documents = scope.get("documents") or []
+    if frozen_documents:
+        return sorted({int(item["document_id"]) for item in frozen_documents})
+
+    # Read the pre-governance shape so older approved plans remain exportable.
+    return sorted({int(document_id) for document_id in scope.get("document_ids") or []})
+
+
 async def generate_oscal_assessment_plan(assessment_id: int) -> str:
     async with AsyncSessionLocal() as db:
         assessment = await db.scalar(select(Assessment).where(Assessment.id == assessment_id))
@@ -52,7 +63,7 @@ async def generate_oscal_assessment_plan(assessment_id: int) -> str:
             user_rows = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
             users = {user.id: user for user in user_rows}
 
-        document_ids = sorted(set(plan.scope_json.get("document_ids") or []))
+        document_ids = _frozen_document_ids(plan.scope_json)
         documents = {}
         if document_ids:
             docs = (await db.execute(select(Document).where(Document.id.in_(document_ids)))).scalars().all()

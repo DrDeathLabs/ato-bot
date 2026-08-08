@@ -34,7 +34,8 @@ Verified locally in the current cleanup branch:
 ## Remaining Publication Blockers
 
 1. Run the full 20-family, 324-control, 1,467-objective regression against the release candidate and meet documented stability tolerances.
-2. Add broader API project-isolation and permission tests across every route group; current coverage is still materially below a mature security product target.
+   Validate the resulting governed assessment with `cd backend && python scripts/verify_release_assessment.py <assessment_id>`.
+2. Add database-backed project-isolation and permission tests across every API group. A structural contract now prevents unapproved public routes and project routes without an access dependency, but it does not replace live cross-tenant tests.
 3. Run the locally passing browser workflow in private GitHub Actions and resolve any environment-specific failures.
 4. Validate semantic reconciliation across UI, database, SAR, POA&M, SSP, Word, Excel, JSON, and OSCAL exports using a finalized governed assessment.
 5. Populate and approve calibration suites for every supported model/prompt/policy/retrieval combination.

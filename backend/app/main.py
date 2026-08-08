@@ -44,6 +44,7 @@ from app.api.ssp import router as ssp_router
 from app.api.meta import router as meta_router
 from app.api.assessment_governance import router as assessment_governance_router
 from app.core.config import get_settings
+from app.core.features import feature_enabled
 from app.core.rate_limit import limiter
 from app.middleware.audit import audit_middleware
 from app.middleware.security_headers import security_headers_middleware
@@ -123,7 +124,8 @@ app.include_router(audit_log_router, prefix="/api")
 app.include_router(scorecard_router, prefix="/api")
 app.include_router(events_router, prefix="/api")
 app.include_router(poam_router, prefix="/api")
-app.include_router(security_telemetry_router, prefix="/api")
+if feature_enabled(settings, "continuous_telemetry"):
+    app.include_router(security_telemetry_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(llm_router, prefix="/api")
 app.include_router(overrides_router, prefix="/api")
@@ -141,7 +143,7 @@ app.include_router(test_dataset_router, prefix="/api")
 app.include_router(ingestion_config_router, prefix="/api")
 app.include_router(control_catalog_router, prefix="/api")
 app.include_router(system_knowledge_router, prefix="/api")
-if settings.enable_experimental_cato:
+if feature_enabled(settings, "external_integrations"):
     app.include_router(integrations_router, prefix="/api")
 app.include_router(calibration_router, prefix="/api")
 app.include_router(assessment_policy_router, prefix="/api")
