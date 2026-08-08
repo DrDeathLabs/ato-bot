@@ -1,5 +1,8 @@
 {
   "dependencies": {
     "docx": "^9.6.1"
+  },
+  "overrides": {
+    "nanoid": "^5.1.16"
   }
 }
