@@ -26,7 +26,9 @@ Beta features are available for evaluation but require stronger automated tests 
 - External integration accounts and connector synchronization
 - Continuous telemetry and drift rollups derived from connector scaffolding
 
-The current connector implementation includes dry-run behavior and explicitly does not implement every live provider API. Public frontend builds and backend routes keep this slice disabled unless both are configured with `VITE_ENABLE_EXPERIMENTAL_CATO=true` and `ENABLE_EXPERIMENTAL_CATO=true`.
+The current connector implementation includes dry-run behavior and explicitly does not implement every live provider API. The backend registry at `GET /api/meta/features` is authoritative. These routes and frontend navigation remain disabled unless `ENABLE_EXPERIMENTAL_CATO=true` is configured on the backend.
+
+See `EXPERIMENTAL_CAPABILITIES.md` for the preservation and eventual disposition inventory. No experimental capability is part of the supported-feature claim.
 
 ## Deprecated Compatibility Paths
 

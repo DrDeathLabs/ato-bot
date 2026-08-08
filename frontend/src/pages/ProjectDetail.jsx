@@ -7,8 +7,7 @@ import SystemProfile from './SystemProfile'
 import DocumentExplorer from '../components/DocumentExplorer'
 import DocumentPipelineReport from '../components/DocumentPipelineReport'
 import { openCyberAssistant } from '../components/cyberAssistant'
-
-const experimentalCatoEnabled = import.meta.env.VITE_ENABLE_EXPERIMENTAL_CATO === 'true'
+import { useFeature } from '../components/FeatureRegistry'
 
 // ── Expanding Textarea ─────────────────────────────────────────────────────────
 // Preview textarea that opens a centered modal overlay for comfortable editing
@@ -145,6 +144,7 @@ const formatOllamaModelLabel = (model) => {
 }
 
 export default function ProjectDetail() {
+  const experimentalCatoEnabled = useFeature('cato_dashboard')
   const { id } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()

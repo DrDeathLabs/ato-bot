@@ -22,13 +22,13 @@ import SspWorkbenchPage from './pages/SspWorkbenchPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import { ControlReferenceProvider } from './components/ControlReference'
+import { FeatureRegistryProvider, useFeature } from './components/FeatureRegistry'
 
 const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'))
 const CatoDashboardPage = lazy(() => import('./pages/CatoDashboardPage'))
-const experimentalCatoEnabled = import.meta.env.VITE_ENABLE_EXPERIMENTAL_CATO === 'true'
-
 function ExperimentalCatoRoute({ children }) {
   const { id } = useParams()
+  const experimentalCatoEnabled = useFeature('cato_dashboard')
   if (!experimentalCatoEnabled) return <Navigate to={`/projects/${id}`} replace />
   return <Suspense fallback={<div className="p-8 text-sm text-gray-500">Loading experimental workspace...</div>}>{children}</Suspense>
 }
@@ -59,9 +59,10 @@ class ErrorBoundary extends Component {
 
 export default function App() {
   return (
-    <ControlReferenceProvider>
-      <BrowserRouter>
-        <Routes>
+    <FeatureRegistryProvider>
+      <ControlReferenceProvider>
+        <BrowserRouter>
+          <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
@@ -91,8 +92,9 @@ export default function App() {
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/projects" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </ControlReferenceProvider>
+          </Routes>
+        </BrowserRouter>
+      </ControlReferenceProvider>
+    </FeatureRegistryProvider>
   )
 }

@@ -7,8 +7,7 @@ import {
 } from 'lucide-react'
 import api from '../api/client'
 import { openCyberAssistant } from '../components/cyberAssistant'
-
-const experimentalCatoEnabled = import.meta.env.VITE_ENABLE_EXPERIMENTAL_CATO === 'true'
+import { useFeature } from '../components/FeatureRegistry'
 
 function SummaryCard({ label, value, hint }) {
   return (
@@ -35,6 +34,7 @@ function StatusBadge({ status }) {
 }
 
 export default function SystemKnowledgePage() {
+  const experimentalCatoEnabled = useFeature('cato_dashboard')
   const { id: projectId } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()

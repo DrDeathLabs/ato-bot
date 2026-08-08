@@ -40,6 +40,7 @@ from app.api.integrations import router as integrations_router
 from app.api.calibration import router as calibration_router
 from app.api.assessment_policy import router as assessment_policy_router
 from app.api.ssp import router as ssp_router
+from app.api.meta import router as meta_router
 from app.core.config import get_settings
 from app.core.database import Base, engine
 from app.core.rate_limit import limiter
@@ -110,6 +111,7 @@ app.add_middleware(BaseHTTPMiddleware, dispatch=audit_middleware)
 
 # â”€â”€ Routers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 app.include_router(auth.router, prefix="/api")
+app.include_router(meta_router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(projects_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")

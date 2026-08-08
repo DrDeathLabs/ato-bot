@@ -147,8 +147,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        VITE_ENABLE_EXPERIMENTAL_CATO: ${VITE_ENABLE_EXPERIMENTAL_CATO:-false}
     image: atobot-frontend:local
     container_name: atobot_frontend
     restart: unless-stopped
