@@ -2,9 +2,12 @@
 .env.*
 !.env.example
 .venv
+.local
+.cache
 __pycache__
 **/__pycache__
 .pytest_cache
+tests
 uploads
 outputs
 test_harness

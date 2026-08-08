@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim@sha256:90744cff8f32887f075c47d747a173ff333e9e98801667af93c357fa9f5e28ff
 
 # System deps for document parsing
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -14,6 +14,7 @@ RUN pip install --no-cache-dir --constraint constraints.txt --upgrade "pip>=26.0
 ARG TORCH_VERSION=2.9.1
 RUN pip install --no-cache-dir --constraint constraints.txt --index-url https://download.pytorch.org/whl/cpu "torch==${TORCH_VERSION}"
 RUN pip install --no-cache-dir --constraint constraints.txt -r requirements.txt
+RUN python -m pip check && python -m pip uninstall --yes pip
 
 COPY . .
 

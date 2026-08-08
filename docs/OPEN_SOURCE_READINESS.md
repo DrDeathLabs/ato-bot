@@ -9,11 +9,15 @@ Verified locally in the current cleanup branch:
 - Moderate baseline: 324 unique controls and enhancements, 1,467 objectives, and all `EXAMINE`, `INTERVIEW`, and `TEST` method types preserved.
 - Frontend production entry chunk: 384 KB; no generated chunk exceeds 500 KB.
 - Frontend dependency audit: zero known vulnerabilities.
+- Root release-tooling dependency audit: zero known vulnerabilities.
 - Python production dependency audit: zero known vulnerabilities.
+- Trivy scans of the tracked release tree and rebuilt PostgreSQL, Redis, backend, and frontend runtime images: zero high or critical findings. Every service runs as a non-root user; the backend image does not retain `pip`, and the PostgreSQL derivative removes the unused root-only `gosu` helper.
+- Full-history Gitleaks scan through the current local commit history: no secrets detected.
 - Frontend lint: zero errors; legacy cleanup warnings remain.
 - Backend unit and release-contract suite: 49 tests passed.
 - Core browser E2E passed locally in an isolated stack: login, feature metadata, project create/delete, logout, and invalid-login behavior.
 - Fresh migrations and governance downgrade/re-upgrade completed in disposable PostgreSQL/pgvector databases.
+- The pinned non-root PostgreSQL/pgvector image initialized a fresh database and loaded pgvector `0.8.6` successfully.
 - A verified external backup of the current local database was restored and upgraded in an isolated stack without changing record totals: 356 assessments, 4,878 findings, and 52,895 objective determinations. The upgraded API started healthy and the release verifier correctly rejected a legacy 324-control/1,467-objective run that lacked the new governance records.
 - Reproducible Python dependency constraints are consumed by Docker and CI.
 - Existing local runtime data has not been migrated or modified.
