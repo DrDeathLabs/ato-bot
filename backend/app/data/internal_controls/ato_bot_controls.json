@@ -1,0 +1,210 @@
+[
+  {
+    "control_id": "AC-2",
+    "control_family": "AC",
+    "control_title": "Account Management",
+    "status": "implemented",
+    "evidence_text": "User accounts are actively managed with defined roles. Inactive/unauthorized accounts are disabled. Account status is monitored in real time.",
+    "notes": "[\"Application\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "AC-3",
+    "control_family": "AC",
+    "control_title": "Access Enforcement",
+    "status": "implemented",
+    "evidence_text": "Role-based access control is enforced on every API endpoint via FastAPI dependency injection. Users can only access resources within their authorization level.",
+    "notes": "[\"Application\", \"PostgreSQL\", \"JWT\"]"
+  },
+  {
+    "control_id": "AC-6",
+    "control_family": "AC",
+    "control_title": "Least Privilege",
+    "status": "implemented",
+    "evidence_text": "Privileged accounts (system_admin, security_officer) are minimized. Users are assigned the lowest role necessary for their function.",
+    "notes": "[\"Application\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "AC-7",
+    "control_family": "AC",
+    "control_title": "Unsuccessful Logon Attempts",
+    "status": "implemented",
+    "evidence_text": "The system enforces a limit on consecutive failed login attempts and automatically locks accounts. Nginx applies network-layer rate limiting. Application-layer rate limiting is enforced via slowapi.",
+    "notes": "[\"Application\", \"Nginx\", \"slowapi\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "AC-17",
+    "control_family": "AC",
+    "control_title": "Remote Access",
+    "status": "implemented",
+    "evidence_text": "All remote sessions are authenticated via JWT and authorized through RBAC. Session access is controlled, monitored, and tied to authenticated user identities.",
+    "notes": "[\"Application\", \"JWT\", \"Nginx\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "AU-2",
+    "control_family": "AU",
+    "control_title": "Event Logging",
+    "status": "implemented",
+    "evidence_text": "Security-relevant events are identified, classified by severity and category, and logged with sufficient detail to support investigations and forensic analysis.",
+    "notes": "[\"Application\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "AU-3",
+    "control_family": "AU",
+    "control_title": "Content of Audit Records",
+    "status": "implemented",
+    "evidence_text": "Audit records include all required fields: event type, timestamp, user identity, source IP, client user-agent, affected resource, and structured metadata payload.",
+    "notes": "[\"Application\", \"PostgreSQL\", \"SQLAlchemy\"]"
+  },
+  {
+    "control_id": "AU-9",
+    "control_family": "AU",
+    "control_title": "Audit Record Protection",
+    "status": "implemented",
+    "evidence_text": "Audit records are append-only. No UPDATE or DELETE operations are permitted on the AuditLog table through the application layer. PostgreSQL access is restricted to the application service account.",
+    "notes": "[\"Application\", \"PostgreSQL\", \"SQLAlchemy\"]"
+  },
+  {
+    "control_id": "AU-11",
+    "control_family": "AU",
+    "control_title": "Audit Record Retention",
+    "status": "not_implemented",
+    "evidence_text": "Audit records are retained in PostgreSQL with no automated deletion policy. Retention period is determined by available storage and organizational policy. A formal retention schedule and automated purge mechanism have not been implemented.",
+    "notes": "[\"PostgreSQL\", \"Application\"]"
+  },
+  {
+    "control_id": "AU-12",
+    "control_family": "AU",
+    "control_title": "Audit Record Generation",
+    "status": "implemented",
+    "evidence_text": "Audit records are generated automatically for all security-relevant events throughout the system, including authentication, access control, and data operations, via the audit middleware.",
+    "notes": "[\"Application\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "CM-6",
+    "control_family": "CM",
+    "control_title": "Configuration Settings",
+    "status": "implemented",
+    "evidence_text": "System is deployed with security-hardened settings: Nginx security headers, HSTS, CSP, startup environment validation, and no permissive defaults. All configuration is sourced from environment variables.",
+    "notes": "[\"Application\", \"Nginx\"]"
+  },
+  {
+    "control_id": "CM-7",
+    "control_family": "CM",
+    "control_title": "Least Functionality",
+    "status": "implemented",
+    "evidence_text": "RBAC enforces minimum necessary access. Routes require the lowest permissible role. Only required ports are exposed. Unused services are not deployed.",
+    "notes": "[\"Application\", \"Nginx\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "CP-10",
+    "control_family": "CP",
+    "control_title": "System Recovery and Reconstitution",
+    "status": "implemented",
+    "evidence_text": "System recovery capability is supported by persistent PostgreSQL and Redis volumes, stateless application containers, and monitored database connections.",
+    "notes": "[\"PostgreSQL\", \"Redis\", \"Application\"]"
+  },
+  {
+    "control_id": "IA-2",
+    "control_family": "IA",
+    "control_title": "Identification and Authentication",
+    "status": "implemented",
+    "evidence_text": "All users are uniquely identified by username and authenticated via password + optional MFA. All API endpoints require a valid JWT. Anonymous access is blocked except for the health check endpoint.",
+    "notes": "[\"Application\", \"JWT\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "IA-5",
+    "control_family": "IA",
+    "control_title": "Authenticator Management",
+    "status": "not_implemented",
+    "evidence_text": "Passwords are hashed with bcrypt (cost factor 12). MFA uses RFC 6238 TOTP (pyotp). MFA adoption is not yet enforced organization-wide — 0% of users have MFA enabled, which does not meet the organizational security posture requirement.",
+    "notes": "[\"Application\", \"PostgreSQL\", \"bcrypt\"]"
+  },
+  {
+    "control_id": "IA-11",
+    "control_family": "IA",
+    "control_title": "Re-authentication",
+    "status": "implemented",
+    "evidence_text": "JWT access tokens expire after 15 minutes, requiring silent refresh. Refresh tokens expire after 7 days. Token rotation prevents replay attacks.",
+    "notes": "[\"Application\", \"JWT\"]"
+  },
+  {
+    "control_id": "IR-4",
+    "control_family": "IR",
+    "control_title": "Incident Handling",
+    "status": "implemented",
+    "evidence_text": "Security incidents (account lockouts, brute-force patterns, privilege escalations) are automatically detected, classified, and logged as SecurityEvents for SOC investigation.",
+    "notes": "[\"Application\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "IR-6",
+    "control_family": "IR",
+    "control_title": "Incident Reporting",
+    "status": "implemented",
+    "evidence_text": "Security anomalies (MFA disables, role escalations, account lockouts) are automatically detected and logged as high-severity events for SOC review.",
+    "notes": "[\"Application\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "PS-4",
+    "control_family": "PS",
+    "control_title": "Personnel Termination",
+    "status": "implemented",
+    "evidence_text": "User deletions and account removals are logged and tracked. Account access is revoked immediately upon deactivation. All actions are captured in the audit log.",
+    "notes": "[\"Application\", \"PostgreSQL\"]"
+  },
+  {
+    "control_id": "SC-5",
+    "control_family": "SC",
+    "control_title": "Denial of Service Protection",
+    "status": "implemented",
+    "evidence_text": "Rate limiting is enforced at two independent layers: Nginx network layer and the application layer via slowapi. Authentication endpoints have stricter limits than general API endpoints.",
+    "notes": "[\"Nginx\", \"Application\", \"slowapi\"]"
+  },
+  {
+    "control_id": "SC-7",
+    "control_family": "SC",
+    "control_title": "Boundary Protection",
+    "status": "implemented",
+    "evidence_text": "Nginx acts as the single external boundary. All traffic enters through Nginx, which enforces rate limiting and HTTP proxying to internal services. Direct backend access is not exposed.",
+    "notes": "[\"Nginx\"]"
+  },
+  {
+    "control_id": "SC-8",
+    "control_family": "SC",
+    "control_title": "Transmission Confidentiality & Integrity",
+    "status": "implemented",
+    "evidence_text": "All external traffic is TLS-encrypted via Nginx. Security headers (HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy) are enforced at both Nginx and application layers.",
+    "notes": "[\"Nginx\", \"Application\"]"
+  },
+  {
+    "control_id": "SC-12",
+    "control_family": "SC",
+    "control_title": "Cryptographic Key Management",
+    "status": "implemented",
+    "evidence_text": "JWT signing keys are cryptographically strong, securely stored in environment variables, and meet minimum length requirements. Key strength is validated at startup via pydantic-settings.",
+    "notes": "[\"Application\", \"JWT\"]"
+  },
+  {
+    "control_id": "SC-23",
+    "control_family": "SC",
+    "control_title": "Session Authenticity",
+    "status": "implemented",
+    "evidence_text": "JWT tokens include issuer and audience claims that are validated on every request. Token rotation prevents replay attacks. Redis provides persistent real-time session state for refresh token revocation.",
+    "notes": "[\"Application\", \"JWT\", \"Redis\"]"
+  },
+  {
+    "control_id": "SC-28",
+    "control_family": "SC",
+    "control_title": "Protection of Information at Rest",
+    "status": "implemented",
+    "evidence_text": "Passwords are one-way hashed with bcrypt (cost factor 12). MFA TOTP secrets are stored in the database. No plaintext credentials are stored. PostgreSQL data files are stored on a dedicated Docker volume.",
+    "notes": "[\"Application\", \"PostgreSQL\", \"bcrypt\", \"Redis\"]"
+  },
+  {
+    "control_id": "SI-3",
+    "control_family": "SI",
+    "control_title": "Malicious Code Protection",
+    "status": "implemented",
+    "evidence_text": "Content Security Policy prevents XSS-based code injection. Input validation via Pydantic v2 sanitizes all user input. Nginx inspects request sizes and enforces content type restrictions.",
+    "notes": "[\"Application\", \"Nginx\"]"
+  }
+]

@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.venv
+__pycache__
+**/__pycache__
+.pytest_cache
+uploads
+outputs
+test_harness
+collector_payload.json
+*.pyc

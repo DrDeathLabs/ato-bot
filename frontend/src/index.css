@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900;
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-main > .p-8,
+  .app-main > .p-6,
+  .app-main > .px-8 {
+    padding: 1rem !important;
+  }
+
+  .app-main > .max-w-5xl,
+  .app-main > .max-w-6xl,
+  .app-main > .max-w-7xl {
+    max-width: none !important;
+  }
+
+  .app-main :where(.grid.grid-cols-2, .grid.grid-cols-3, .grid.grid-cols-4, .grid.grid-cols-5) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .app-main :where(.overflow-hidden:has(> table), .overflow-hidden:has(table)) {
+    overflow-x: auto !important;
+  }
+
+  .app-main table {
+    min-width: 44rem;
+  }
+
+  .app-main :where(input, select, textarea, button) {
+    max-width: 100%;
+  }
+
+  .app-main :where(h1, h2, h3, p, span, a, button, label) {
+    overflow-wrap: anywhere;
+  }
+}

@@ -1,0 +1,56 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node / frontend build
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Runtime data and generated output
+backend/uploads/
+backend/outputs/
+uploads/
+outputs/
+tmp/
+*.log
+*.tar
+collector_payload.json
+backend/collector_payload.json
+
+# Generated binary deliverables and local screenshots
+/*.docx
+docs/*.docx
+docs/*.pptx
+docs/app_screens_*/
+
+# Private review material and presentation working notes
+docs/*Assessment_Capability_Review*
+docs/*presentation_handoff*
+docs/*Speaker_Notes*
+
+# Local scratch scripts
+/tmp_*.py
+
+# Editors and operating systems
+.claude/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,5 @@
+* @atobot-maintainers
+
+/backend/app/core/ @atobot-maintainers
+/backend/alembic/ @atobot-maintainers
+/.github/ @atobot-maintainers
