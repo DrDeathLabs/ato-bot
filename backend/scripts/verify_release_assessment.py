@@ -4,9 +4,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import sys
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.database import AsyncSessionLocal, engine
 from app.models.orm import (
@@ -178,10 +183,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("assessment_id", type=int)
     args = parser.parse_args()
-    try:
-        result = asyncio.run(verify_assessment(args.assessment_id))
-    finally:
-        asyncio.run(engine.dispose())
+
+    async def run_and_dispose() -> dict[str, Any]:
+        try:
+            return await verify_assessment(args.assessment_id)
+        finally:
+            await engine.dispose()
+
+    result = asyncio.run(run_and_dispose())
     print(json.dumps(result, indent=2, sort_keys=True))
     return 0 if result["passed"] else 1
 

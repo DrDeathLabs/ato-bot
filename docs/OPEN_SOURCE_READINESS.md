@@ -11,9 +11,10 @@ Verified locally in the current cleanup branch:
 - Frontend dependency audit: zero known vulnerabilities.
 - Python production dependency audit: zero known vulnerabilities.
 - Frontend lint: zero errors; legacy cleanup warnings remain.
-- Backend unit suite: 40 tests passed.
+- Backend unit and release-contract suite: 49 tests passed.
 - Core browser E2E passed locally in an isolated stack: login, feature metadata, project create/delete, logout, and invalid-login behavior.
 - Fresh migrations and governance downgrade/re-upgrade completed in disposable PostgreSQL/pgvector databases.
+- A verified external backup of the current local database was restored and upgraded in an isolated stack without changing record totals: 356 assessments, 4,878 findings, and 52,895 objective determinations. The upgraded API started healthy and the release verifier correctly rejected a legacy 324-control/1,467-objective run that lacked the new governance records.
 - Reproducible Python dependency constraints are consumed by Docker and CI.
 - Existing local runtime data has not been migrated or modified.
 
@@ -40,7 +41,7 @@ Verified locally in the current cleanup branch:
 4. Validate semantic reconciliation across UI, database, SAR, POA&M, SSP, Word, Excel, JSON, and OSCAL exports using a finalized governed assessment.
 5. Populate and approve calibration suites for every supported model/prompt/policy/retrieval combination.
 6. Run CodeQL, dependency review, Gitleaks, Trivy, and SBOM workflows on the exact candidate commit.
-7. Back up the live local database, test the upgrade on the backup, rotate all deployment credentials, and verify login after backend-only recreation.
+7. Coordinate the live upgrade from the verified backup, rotate all deployment credentials, and verify login after backend-only recreation. Backup creation and isolated upgrade validation are complete; the live database has intentionally not been changed.
 8. Resolve every item in `EXPERIMENTAL_CAPABILITIES.md` with a recorded retain/promote/remove/defer decision.
 9. Review the exact staged file set for private evidence, reports, host identifiers, archives, and patent material.
 10. Configure protected `main` branch checks in the private GitHub repository; this cannot be enforced by local files alone.
