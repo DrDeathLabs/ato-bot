@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
 from pathlib import Path
 
 from docx import Document
@@ -57,7 +56,7 @@ async def generate_word(assessment_id: int) -> str:
     doc = Document()
 
     # Title
-    title = doc.add_heading(f"Security Assessment Report", 0)
+    title = doc.add_heading("Security Assessment Report", 0)
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     doc.add_paragraph(f"System: {project.name}").runs[0].bold = True
     doc.add_paragraph(f"Baseline: {project.impact_baseline.upper()}")

@@ -45,9 +45,12 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">Username</label>
             <input
+              id="username"
+              name="username"
               type="text"
+              autoComplete="username"
               required
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
@@ -55,9 +58,12 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
+              id="password"
+              name="password"
               type="password"
+              autoComplete="current-password"
               required
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -66,9 +72,13 @@ export default function Login() {
           </div>
           {mfaRequired && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">MFA Code</label>
+              <label htmlFor="totp-code" className="block text-sm font-medium text-gray-700 mb-1">MFA Code</label>
               <input
+                id="totp-code"
+                name="totp_code"
                 type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
                 maxLength={6}
                 pattern="\d{6}"
                 value={form.totp_code}
@@ -78,7 +88,7 @@ export default function Login() {
               />
             </div>
           )}
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p role="alert" aria-live="polite" className="text-red-600 text-sm">{error}</p>}
           <button
             type="submit"
             disabled={loading}

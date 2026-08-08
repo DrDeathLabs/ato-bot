@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.orm import (

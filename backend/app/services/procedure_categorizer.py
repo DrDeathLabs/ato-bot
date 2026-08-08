@@ -11,7 +11,6 @@ After a procedure document is uploaded, this service:
 from __future__ import annotations
 
 import logging
-import re
 
 from sqlalchemy import select
 

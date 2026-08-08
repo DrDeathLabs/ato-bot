@@ -9,11 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade "pip>=26.0" "setuptools>=83.0.0" "wheel>=0.46.2"
+COPY requirements.txt constraints.txt ./
+RUN pip install --no-cache-dir --constraint constraints.txt --upgrade "pip>=26.0" "setuptools>=83.0.0" "wheel>=0.46.2"
 ARG TORCH_VERSION=2.9.1
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "torch==${TORCH_VERSION}"
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --constraint constraints.txt --index-url https://download.pytorch.org/whl/cpu "torch==${TORCH_VERSION}"
+RUN pip install --no-cache-dir --constraint constraints.txt -r requirements.txt
 
 COPY . .
 

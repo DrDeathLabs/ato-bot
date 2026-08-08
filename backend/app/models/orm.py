@@ -18,7 +18,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.model_base import Base
 
 
 # ── Auth & Access ─────────────────────────────────────────────────────────────
@@ -279,6 +279,12 @@ class Document(Base):
     # assessment engine can tell the gap-analysis LLM what kind of document it's reading.
     document_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     document_intent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    artifact_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    evidence_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    artifact_approved_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    artifact_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     project: Mapped["Project | None"] = relationship(back_populates="documents", foreign_keys=[project_id])
     provider: Mapped["CommonControlProvider | None"] = relationship(
@@ -341,7 +347,7 @@ class Assessment(Base):
     context_strategy: Mapped[str] = mapped_column(String(16), default="rag")
     ollama_num_ctx: Mapped[int | None] = mapped_column(Integer, nullable=True)
     skip_stage3: Mapped[bool] = mapped_column(Boolean, default=False)
-    carry_forward_compliant: Mapped[bool] = mapped_column(Boolean, default=True)
+    carry_forward_compliant: Mapped[bool] = mapped_column(Boolean, default=False)
     controls_total: Mapped[int] = mapped_column(Integer, default=0)
     controls_complete: Mapped[int] = mapped_column(Integer, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -356,11 +362,120 @@ class Assessment(Base):
         ForeignKey("assessment_policies.id", ondelete="SET NULL"), nullable=True, index=True
     )
     policy_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    finalization_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_ready")
+    finalized_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     project: Mapped["Project"] = relationship(back_populates="assessments")
     findings: Mapped[list["ControlFinding"]] = relationship(back_populates="assessment", cascade="all, delete-orphan")
     remediation_reports: Mapped[list["RemediationReport"]] = relationship(back_populates="assessment", cascade="all, delete-orphan")
     policy: Mapped["AssessmentPolicy | None"] = relationship(back_populates="assessments")
+
+
+class AssessmentPlan(Base):
+    """Pre-execution scope, procedure, and approval record for an assessment."""
+    __tablename__ = "assessment_plans"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assessment_id: Mapped[int] = mapped_column(
+        ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="draft")
+    scope_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    control_selection_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    methods_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    objects_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    depth: Mapped[str] = mapped_column(String(32), nullable=False)
+    coverage: Mapped[str] = mapped_column(String(32), nullable=False)
+    assessor_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    approved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    approval_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class AssessmentActivity(Base):
+    """Recorded EXAMINE, INTERVIEW, or TEST activity performed during an assessment."""
+    __tablename__ = "assessment_activities"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assessment_id: Mapped[int] = mapped_column(
+        ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    plan_id: Mapped[int] = mapped_column(
+        ForeignKey("assessment_plans.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    control_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    objective_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    method: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    assessment_objects: Mapped[list] = mapped_column(JSON, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="planned")
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evidence_refs: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    performed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    performed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reviewed_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AssessmentTailoringDecision(Base):
+    """Approved ODP, inheritance, compensating-control, or N/A decision."""
+    __tablename__ = "assessment_tailoring_decisions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assessment_id: Mapped[int] = mapped_column(
+        ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    control_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    decision_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    parameter_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    value_json: Mapped[dict | list | str | None] = mapped_column(JSON, nullable=True)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    evidence_refs: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="proposed")
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    approved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AssessmentApproval(Base):
+    """Append-only assessor or independent-reviewer approval event."""
+    __tablename__ = "assessment_approvals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assessment_id: Mapped[int] = mapped_column(
+        ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    approval_type: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    decision: Mapped[str] = mapped_column(String(16), nullable=False)
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AssessmentRetryJob(Base):
+    """Durable request to retry failed findings without tying work to the API process."""
+    __tablename__ = "assessment_retry_jobs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assessment_id: Mapped[int] = mapped_column(
+        ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    control_ids: Mapped[list] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending", index=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class RemediationReport(Base):
@@ -569,6 +684,10 @@ class AssessmentChallenge(Base):
     dissent_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     challenged_objectives: Mapped[list | None] = mapped_column(JSON, nullable=True)
     model_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    resolution_status: Mapped[str] = mapped_column(String(32), nullable=False, default="not_required")
+    resolution_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resolved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -707,7 +826,16 @@ class POAM(Base):
     remediation_plan: Mapped[str | None] = mapped_column(Text, nullable=True)
     milestones: Mapped[list | None] = mapped_column(JSON, nullable=True)
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    owner_role: Mapped[str | None] = mapped_column(String(128), nullable=True)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_completion_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    likelihood: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    impact: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    residual_risk: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    response_strategy: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    acceptance_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    accepted_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(32), default="open")  # open|in_progress|completed|accepted_risk|closed
     assessment_id: Mapped[int | None] = mapped_column(ForeignKey("assessments.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -1545,6 +1673,12 @@ class ArtifactApproval(Base):
     current_step: Mapped[int] = mapped_column(Integer, default=0)
     # pending_review | in_review | approved | rejected
     overall_status: Mapped[str] = mapped_column(String(32), default="pending_review", nullable=False)
+    evidence_eligibility: Mapped[str] = mapped_column(String(32), default="draft", nullable=False)
+    eligibility_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    eligibility_decided_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    eligibility_decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -1692,6 +1826,9 @@ class IngestionRun(Base):
     stage_expand: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
     stage_classify: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
     stage_embed: Mapped[str] = mapped_column(String(32), default="pending", nullable=False)
+    quality_status: Mapped[str] = mapped_column(String(32), default="passed", nullable=False)
+    fallback_stages: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    readiness_eligible: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # Progress counts
     lines_parsed: Mapped[int] = mapped_column(Integer, default=0)
     lines_screened: Mapped[int] = mapped_column(Integer, default=0)

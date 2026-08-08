@@ -1,10 +1,8 @@
 """Audit logging middleware — logs every request to the audit_logs table."""
-import json
 import time
 from typing import Callable
 
 from fastapi import Request, Response
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.rbac import require_assessor
-from app.models.orm import Assessment, ControlFinding
+from app.models.orm import ControlFinding
 
 router = APIRouter(prefix="/ai-assist", tags=["ai-assist"])
 
@@ -140,7 +140,7 @@ async def generate_notes(
         text = (await provider.complete(system_prompt, user_prompt)).strip()
         # Strip any JSON wrapping if model misbehaves
         if text.startswith("{") or text.startswith('"'):
-            import json, re
+            import re
             m = re.search(r'"([^"]{20,})"', text)
             text = m.group(1) if m else text
         return AiAssistResponse(text=text)

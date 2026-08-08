@@ -6,6 +6,7 @@ import api from '../../api/client'
 const RISK_COLOR = {
   critical: 'bg-red-100 text-red-800',
   high: 'bg-orange-100 text-orange-800',
+  medium: 'bg-yellow-100 text-yellow-800',
   moderate: 'bg-yellow-100 text-yellow-800',
   low: 'bg-blue-100 text-blue-700',
 }
@@ -14,7 +15,7 @@ const STATUS_COLOR = {
   open: 'bg-red-100 text-red-700',
   in_progress: 'bg-yellow-100 text-yellow-700',
   completed: 'bg-green-100 text-green-700',
-  risk_accepted: 'bg-gray-100 text-gray-600',
+  accepted_risk: 'bg-gray-100 text-gray-600',
 }
 
 function POAMRow({ item }) {
@@ -23,6 +24,14 @@ function POAMRow({ item }) {
   const [status, setStatus] = useState(item.status)
   const [plan, setPlan] = useState(item.remediation_plan || '')
   const [dueDate, setDueDate] = useState(item.due_date ? item.due_date.slice(0, 10) : '')
+  const [scheduledDate, setScheduledDate] = useState(item.scheduled_completion_date ? item.scheduled_completion_date.slice(0, 10) : '')
+  const [ownerRole, setOwnerRole] = useState(item.owner_role || '')
+  const [likelihood, setLikelihood] = useState(item.likelihood || 'medium')
+  const [impact, setImpact] = useState(item.impact || 'medium')
+  const [residualRisk, setResidualRisk] = useState(item.residual_risk || 'medium')
+  const [responseStrategy, setResponseStrategy] = useState(item.response_strategy || 'mitigate')
+  const [milestones, setMilestones] = useState((item.milestones || []).map((entry) => entry.title || entry.description || String(entry)).join('\n'))
+  const [acceptanceRationale, setAcceptanceRationale] = useState(item.acceptance_rationale || '')
 
   const update = useMutation({
     mutationFn: (data) => api.patch(`/security/poam/${item.id}`, data).then((r) => r.data),
@@ -77,7 +86,7 @@ function POAMRow({ item }) {
                   <option value="open">Open</option>
                   <option value="in_progress">In Progress</option>
                   <option value="completed">Completed</option>
-                  <option value="risk_accepted">Risk Accepted</option>
+                  <option value="accepted_risk">Risk Accepted</option>
                 </select>
               </div>
               <div>
@@ -85,14 +94,76 @@ function POAMRow({ item }) {
                 <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
               </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">SCHEDULED COMPLETION</label>
+                <input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">OWNER ROLE</label>
+                <input value={ownerRole} onChange={(e) => setOwnerRole(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm" />
+              </div>
+              {[
+                ['LIKELIHOOD', likelihood, setLikelihood],
+                ['IMPACT', impact, setImpact],
+                ['RESIDUAL RISK', residualRisk, setResidualRisk],
+              ].map(([label, value, setter]) => (
+                <div key={label}>
+                  <label className="text-xs font-semibold text-gray-500 block mb-1">{label}</label>
+                  <select value={value} onChange={(e) => setter(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+              ))}
+              <div>
+                <label className="text-xs font-semibold text-gray-500 block mb-1">RESPONSE</label>
+                <select value={responseStrategy} onChange={(e) => setResponseStrategy(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+                  <option value="mitigate">Mitigate</option>
+                  <option value="accept">Accept</option>
+                  <option value="avoid">Avoid</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </div>
             </div>
             <div className="mb-3">
               <label className="text-xs font-semibold text-gray-500 block mb-1">REMEDIATION PLAN</label>
               <textarea value={plan} onChange={(e) => setPlan(e.target.value)} rows={3}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
             </div>
+            <div className="mb-3">
+              <label className="text-xs font-semibold text-gray-500 block mb-1">MILESTONES (ONE PER LINE)</label>
+              <textarea value={milestones} onChange={(e) => setMilestones(e.target.value)} rows={3}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+            </div>
+            {status === 'accepted_risk' && (
+              <div className="mb-3">
+                <label className="text-xs font-semibold text-gray-500 block mb-1">RISK ACCEPTANCE RATIONALE</label>
+                <textarea value={acceptanceRationale} onChange={(e) => setAcceptanceRationale(e.target.value)} rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+            )}
             <div className="flex gap-2">
-              <button onClick={() => update.mutate({ status, remediation_plan: plan, due_date: dueDate || null })}
+              <button onClick={() => update.mutate({
+                status,
+                remediation_plan: plan,
+                due_date: dueDate ? new Date(`${dueDate}T12:00:00Z`).toISOString() : null,
+                scheduled_completion_date: scheduledDate ? new Date(`${scheduledDate}T12:00:00Z`).toISOString() : null,
+                owner_role: ownerRole,
+                likelihood,
+                impact,
+                residual_risk: residualRisk,
+                response_strategy: responseStrategy,
+                milestones: milestones.split('\n').map((title) => title.trim()).filter(Boolean).map((title) => ({ title })),
+                acceptance_rationale: status === 'accepted_risk' ? acceptanceRationale : null,
+              })}
                 disabled={update.isPending}
                 className="bg-blue-700 text-white text-xs px-4 py-1.5 rounded-lg hover:bg-blue-800 disabled:opacity-50">
                 {update.isPending ? 'Saving...' : 'Save'}
@@ -166,7 +237,7 @@ export default function POAM() {
           <option value="open">Open</option>
           <option value="in_progress">In Progress</option>
           <option value="completed">Completed</option>
-          <option value="risk_accepted">Risk Accepted</option>
+          <option value="accepted_risk">Risk Accepted</option>
         </select>
         <select value={riskFilter} onChange={(e) => setRiskFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm">

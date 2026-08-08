@@ -6,11 +6,18 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import TypeVar
 
-from sqlalchemy import select, update
+from sqlalchemy import exists, select, update
 
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
-from app.models.orm import Assessment, Document, RemediationReport, TestDatasetJob
+from app.models.orm import (
+    Assessment,
+    AssessmentPlan,
+    AssessmentRetryJob,
+    Document,
+    RemediationReport,
+    TestDatasetJob,
+)
 from app.services.ingestion.pipeline import cleanup_stale_ingestion_runs
 
 logger = logging.getLogger(__name__)
@@ -22,14 +29,35 @@ T = TypeVar("T")
 async def _recover_interrupted_work() -> None:
     """Re-queue durable jobs so the worker can resume them after restarts."""
     async with AsyncSessionLocal() as db:
+        approved_plan_exists = exists().where(
+            AssessmentPlan.assessment_id == Assessment.id,
+            AssessmentPlan.status == "approved",
+        )
         await db.execute(
             update(Assessment)
-            .where(Assessment.status == "running")
+            .where(
+                Assessment.status.in_(("pending", "running")),
+                ~approved_plan_exists,
+            )
+            .values(
+                status="failed",
+                error_message="Recovery blocked: approved assessment plan is missing.",
+                progress_detail=None,
+            )
+        )
+        await db.execute(
+            update(Assessment)
+            .where(Assessment.status == "running", approved_plan_exists)
             .values(
                 status="pending",
                 error_message=None,
                 progress_detail="Resuming after worker restart...",
             )
+        )
+        await db.execute(
+            update(AssessmentRetryJob)
+            .where(AssessmentRetryJob.status == "running")
+            .values(status="pending", error_message=None, started_at=None)
         )
         await db.execute(
             update(RemediationReport)
@@ -67,7 +95,13 @@ async def _claim_pending_assessment() -> int | None:
     async with AsyncSessionLocal() as db:
         result = await db.execute(
             select(Assessment)
-            .where(Assessment.status == "pending")
+            .where(
+                Assessment.status == "pending",
+                exists().where(
+                    AssessmentPlan.assessment_id == Assessment.id,
+                    AssessmentPlan.status == "approved",
+                ),
+            )
             .order_by(Assessment.id.asc())
             .with_for_update(skip_locked=True)
             .limit(1)
@@ -101,6 +135,25 @@ async def _claim_pending_report() -> int | None:
             report.progress_detail = "Queued on background worker..."
         await db.commit()
         return report.id
+
+
+async def _claim_pending_retry() -> tuple[int, int] | None:
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(AssessmentRetryJob)
+            .where(AssessmentRetryJob.status == "pending")
+            .order_by(AssessmentRetryJob.id.asc())
+            .with_for_update(skip_locked=True)
+            .limit(1)
+        )
+        job = result.scalar_one_or_none()
+        if job is None:
+            return None
+        job.status = "running"
+        job.error_message = None
+        job.started_at = datetime.now(UTC)
+        await db.commit()
+        return job.id, job.assessment_id
 
 
 async def _claim_pending_test_dataset() -> tuple[int, int] | None:
@@ -151,6 +204,29 @@ async def _run_report_job(report_id: int) -> None:
     from app.services.remediation_service import run_remediation_report
 
     await run_remediation_report(report_id)
+
+
+async def _run_retry_job(job_info: tuple[int, int]) -> None:
+    from app.services.retry_engine import retry_failed_findings
+
+    job_id, assessment_id = job_info
+    try:
+        await retry_failed_findings(assessment_id)
+    except Exception as exc:
+        async with AsyncSessionLocal() as db:
+            job = await db.get(AssessmentRetryJob, job_id)
+            if job:
+                job.status = "failed"
+                job.error_message = str(exc)[:2000]
+                job.completed_at = datetime.now(UTC)
+                await db.commit()
+        raise
+    async with AsyncSessionLocal() as db:
+        job = await db.get(AssessmentRetryJob, job_id)
+        if job:
+            job.status = "complete"
+            job.completed_at = datetime.now(UTC)
+            await db.commit()
 
 
 async def _run_test_dataset_job(job_info: tuple[int, int]) -> None:
@@ -207,7 +283,7 @@ async def _pool_loop(
 async def run_worker() -> None:
     await _recover_interrupted_work()
     logger.info(
-        "Background worker online (assessments=%d reports=%d test_dataset=%d ingestion=%d)",
+        "Background worker online (assessments=%d reports=%d retries=1 test_dataset=%d ingestion=%d)",
         settings.worker_assessment_slots,
         settings.worker_report_slots,
         settings.worker_test_dataset_slots,
@@ -225,6 +301,12 @@ async def run_worker() -> None:
             concurrency=settings.worker_report_slots,
             claim_next=_claim_pending_report,
             runner=_run_report_job,
+        ),
+        _pool_loop(
+            name="assessment-retry",
+            concurrency=1,
+            claim_next=_claim_pending_retry,
+            runner=_run_retry_job,
         ),
         _pool_loop(
             name="test-dataset",

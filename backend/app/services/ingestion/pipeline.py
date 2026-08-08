@@ -360,7 +360,10 @@ async def _stage_screen(run_id: int, document_id: int) -> None:
                 screen_results.append((line.id, result_dict))
 
         screened = 0
+        fallback_used = False
         for line_id, result_dict in screen_results:
+            if "fallback" in str(result_dict.get("rationale") or "").lower():
+                fallback_used = True
             sr = ScreeningResult(
                 line_id=line_id,
                 run_id=run_id,
@@ -381,6 +384,10 @@ async def _stage_screen(run_id: int, document_id: int) -> None:
         if run:
             run.lines_screened = screened
             run.corpus_version = active_corpus.version
+            if fallback_used:
+                run.quality_status = "degraded"
+                run.fallback_stages = sorted(set((run.fallback_stages or []) + ["screen"]))
+                run.readiness_eligible = False
 
         await db.commit()
         await _set_stage(db, run_id, "stage_screen", "complete")
@@ -552,8 +559,11 @@ async def _stage_classify(run_id: int, document_id: int) -> None:
     ])
 
     async with AsyncSessionLocal() as db:
+        fallback_used = False
         for batch, cls_results in zip(batches, batch_results):
             for unit, cls_result in zip(batch, cls_results):
+                if "fallback" in str(cls_result.get("explanation") or "").lower():
+                    fallback_used = True
                 doc = unit_docs.get(unit.id)
                 if doc is not None:
                     cls_result = {
@@ -586,6 +596,10 @@ async def _stage_classify(run_id: int, document_id: int) -> None:
         run = await db.get(IngestionRun, run_id)
         if run:
             run.units_classified = classified
+            if fallback_used:
+                run.quality_status = "degraded"
+                run.fallback_stages = sorted(set((run.fallback_stages or []) + ["classify"]))
+                run.readiness_eligible = False
         await db.commit()
         await _set_stage(db, run_id, "stage_classify", "complete")
 

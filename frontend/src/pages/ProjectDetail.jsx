@@ -155,7 +155,19 @@ export default function ProjectDetail() {
     context_strategy: 'rag',
     ollama_num_ctx: 32768,
     skip_stage3: false,
-    carry_forward_compliant: true,
+    carry_forward_compliant: false,
+    plan_title: 'NIST 800-53 Assessment Plan',
+    scope_statement: 'Assess the configured system boundary and selected NIST 800-53 baseline using the approved project evidence scope.',
+    planned_methods: ['EXAMINE', 'INTERVIEW', 'TEST'],
+    assessment_objects: [
+      'Approved system documentation and operational records',
+      'Personnel responsible for control implementation and operation',
+      'Implemented technical and operational control mechanisms',
+    ],
+    depth: 'focused',
+    coverage: 'representative',
+    plan_approval_note: 'I reviewed this scope, method, object, depth, and coverage plan and approve it for execution.',
+    plan_approved: false,
   })
   const [showStartModal, setShowStartModal] = useState(false)
 
@@ -589,7 +601,14 @@ export default function ProjectDetail() {
               SSP Workbench
             </button>
             <button
-              onClick={() => setShowStartModal(true)}
+              onClick={() => {
+                setStartConfig((current) => ({
+                  ...current,
+                  plan_title: `${project?.name || 'System'} NIST 800-53 Assessment Plan`,
+                  plan_approved: false,
+                }))
+                setShowStartModal(true)
+              }}
               disabled={documents.length === 0 || documents.some(d => d.parse_status === 'processing')}
               className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-40 transition-colors"
             >
@@ -1307,13 +1326,109 @@ export default function ProjectDetail() {
 
       {/* Start Assessment Modal */}
       {showStartModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl">
             <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
               <Settings size={18} />
-              Assessment Configuration
+              Assessment Plan and Configuration
             </h2>
             <div className="space-y-4">
+              <section className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 space-y-4">
+                <div>
+                  <p className="text-sm font-semibold text-blue-950">Pre-execution assessment plan</p>
+                  <p className="mt-1 text-xs text-blue-800">
+                    ATO Bot performs document examination during the automated run. Required interviews and technical tests remain planned activities that a qualified assessor must record before finalization.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Plan title</label>
+                  <input
+                    value={startConfig.plan_title}
+                    onChange={(e) => setStartConfig({ ...startConfig, plan_title: e.target.value, plan_approved: false })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Assessment scope</label>
+                  <textarea
+                    rows={3}
+                    value={startConfig.scope_statement}
+                    onChange={(e) => setStartConfig({ ...startConfig, scope_statement: e.target.value, plan_approved: false })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Depth</label>
+                    <select
+                      value={startConfig.depth}
+                      onChange={(e) => setStartConfig({ ...startConfig, depth: e.target.value, plan_approved: false })}
+                      className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    >
+                      <option value="basic">Basic</option>
+                      <option value="focused">Focused</option>
+                      <option value="comprehensive">Comprehensive</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Coverage</label>
+                    <select
+                      value={startConfig.coverage}
+                      onChange={(e) => setStartConfig({ ...startConfig, coverage: e.target.value, plan_approved: false })}
+                      className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                    >
+                      <option value="representative">Representative</option>
+                      <option value="specific">Specific</option>
+                      <option value="comprehensive">Comprehensive</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <p className="block text-sm font-medium mb-2">NIST 800-53A methods</p>
+                  <div className="flex flex-wrap gap-2">
+                    {startConfig.planned_methods.map((method) => (
+                      <span key={method} className="rounded-full border border-blue-200 bg-white px-3 py-1 text-xs font-semibold text-blue-800">
+                        {method}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Assessment objects</label>
+                  <textarea
+                    rows={3}
+                    value={startConfig.assessment_objects.join('\n')}
+                    onChange={(e) => setStartConfig({
+                      ...startConfig,
+                      assessment_objects: e.target.value.split('\n').map((value) => value.trim()).filter(Boolean),
+                      plan_approved: false,
+                    })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Approval note</label>
+                  <textarea
+                    rows={2}
+                    value={startConfig.plan_approval_note}
+                    onChange={(e) => setStartConfig({ ...startConfig, plan_approval_note: e.target.value, plan_approved: false })}
+                    className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
+                  />
+                </div>
+                <label className="flex items-start gap-3 rounded-lg border border-blue-200 bg-white p-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={startConfig.plan_approved}
+                    onChange={(e) => setStartConfig({ ...startConfig, plan_approved: e.target.checked })}
+                    className="mt-0.5"
+                  />
+                  <span className="text-sm text-gray-700">
+                    I approve this assessment plan for execution and understand that findings remain draft until all required human activities, reviews, dissent resolutions, and approvals are complete.
+                  </span>
+                </label>
+              </section>
+
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Runtime configuration</p>
               <div>
                 <label className="block text-sm font-medium mb-1">LLM Provider</label>
                 <select value={startConfig.llm_provider}
@@ -1432,7 +1547,7 @@ export default function ProjectDetail() {
                 <button onClick={() => setShowStartModal(false)}
                   className="flex-1 border rounded-lg py-2 text-sm hover:bg-gray-50">Cancel</button>
                 <button onClick={() => startAssessment.mutate(startConfig)}
-                  disabled={startAssessment.isPending}
+                  disabled={startAssessment.isPending || !startConfig.plan_approved}
                   className="flex-1 bg-green-600 text-white rounded-lg py-2 text-sm hover:bg-green-700 disabled:opacity-50">
                   {startAssessment.isPending ? 'Starting...' : 'Start'}
                 </button>

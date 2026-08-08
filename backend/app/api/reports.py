@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.rbac import require_project_assessment_access, require_viewer
-from app.models.orm import Assessment, OscalExportRun
+from app.models.orm import Assessment, AssessmentPlan, OscalExportRun
 
 router = APIRouter(
     prefix="/projects/{project_id}/assessments/{assessment_id}/reports",
@@ -25,7 +25,7 @@ async def download_excel(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_viewer),
 ) -> FileResponse:
-    assessment = await _get_complete_assessment(assessment_id, project_id, db)
+    assessment = await _get_finalized_assessment(assessment_id, project_id, db)
     from app.services.reports.excel_report import generate_excel
     path = await generate_excel(assessment_id)
     return FileResponse(path, filename=f"assessment_{assessment_id}_controls.xlsx",
@@ -39,7 +39,7 @@ async def download_word(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_viewer),
 ) -> FileResponse:
-    await _get_complete_assessment(assessment_id, project_id, db)
+    await _get_finalized_assessment(assessment_id, project_id, db)
     from app.services.reports.word_report import generate_word
     path = await generate_word(assessment_id)
     return FileResponse(path, filename=f"assessment_{assessment_id}_findings.docx",
@@ -53,7 +53,7 @@ async def download_pptx(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_viewer),
 ) -> FileResponse:
-    await _get_complete_assessment(assessment_id, project_id, db)
+    await _get_finalized_assessment(assessment_id, project_id, db)
     from app.services.reports.pptx_report import generate_pptx
     path = await generate_pptx(assessment_id)
     return FileResponse(path, filename=f"assessment_{assessment_id}_executive.pptx",
@@ -67,7 +67,7 @@ async def download_json(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_viewer),
 ) -> FileResponse:
-    await _get_complete_assessment(assessment_id, project_id, db)
+    await _get_finalized_assessment(assessment_id, project_id, db)
     from app.services.reports.json_report import generate_json
     path = await generate_json(assessment_id)
     return FileResponse(path, filename=f"assessment_{assessment_id}.json", media_type="application/json")
@@ -80,7 +80,7 @@ async def download_oscal_assessment_results(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_viewer),
 ) -> FileResponse:
-    await _get_complete_assessment(assessment_id, project_id, db)
+    await _get_finalized_assessment(assessment_id, project_id, db)
     from app.services.reports.oscal_assessment_results import generate_oscal_assessment_results
     from app.services.reports.oscal_validation import (
         ASSESSMENT_RESULTS_SCHEMA_SOURCE,
@@ -133,7 +133,7 @@ async def download_oscal_assessment_plan(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_viewer),
 ) -> FileResponse:
-    await _get_complete_assessment(assessment_id, project_id, db)
+    await _get_assessment_with_approved_plan(assessment_id, project_id, db)
     from app.services.reports.oscal_assessment_plan import generate_oscal_assessment_plan
     from app.services.reports.oscal_validation import (
         ASSESSMENT_PLAN_SCHEMA_SOURCE,
@@ -186,7 +186,7 @@ async def download_oscal_ssp(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_viewer),
 ) -> FileResponse:
-    await _get_complete_assessment(assessment_id, project_id, db)
+    await _get_finalized_assessment(assessment_id, project_id, db)
     from app.services.reports.oscal_ssp import generate_oscal_ssp
     from app.services.reports.oscal_validation import (
         OSCAL_VERSION,
@@ -239,7 +239,7 @@ async def download_oscal_poam(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_viewer),
 ) -> FileResponse:
-    await _get_complete_assessment(assessment_id, project_id, db)
+    await _get_finalized_assessment(assessment_id, project_id, db)
     from app.services.reports.oscal_poam import generate_oscal_poam
     from app.services.reports.oscal_validation import (
         OSCAL_VERSION,
@@ -292,7 +292,7 @@ async def get_oscal_export_status(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_viewer),
 ) -> list[dict]:
-    await _get_complete_assessment(assessment_id, project_id, db)
+    await _get_finalized_assessment(assessment_id, project_id, db)
     rows = (
         await db.execute(
             select(OscalExportRun)
@@ -320,13 +320,36 @@ async def get_oscal_export_status(
     ]
 
 
-async def _get_complete_assessment(assessment_id: int, project_id: int, db: AsyncSession) -> Assessment:
+async def _get_assessment(assessment_id: int, project_id: int, db: AsyncSession) -> Assessment:
     result = await db.execute(
         select(Assessment).where(Assessment.id == assessment_id, Assessment.project_id == project_id)
     )
     assessment = result.scalar_one_or_none()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
+    return assessment
+
+
+async def _get_assessment_with_approved_plan(
+    assessment_id: int, project_id: int, db: AsyncSession
+) -> Assessment:
+    assessment = await _get_assessment(assessment_id, project_id, db)
+    plan = await db.scalar(select(AssessmentPlan).where(
+        AssessmentPlan.assessment_id == assessment_id,
+        AssessmentPlan.status == "approved",
+    ))
+    if not plan:
+        raise HTTPException(status_code=409, detail="Assessment plan is not approved")
+    return assessment
+
+
+async def _get_finalized_assessment(assessment_id: int, project_id: int, db: AsyncSession) -> Assessment:
+    assessment = await _get_assessment(assessment_id, project_id, db)
     if assessment.status != "complete":
-        raise HTTPException(status_code=400, detail="Assessment not yet complete")
+        raise HTTPException(status_code=409, detail="Assessment execution is not complete")
+    if assessment.finalization_status != "finalized":
+        raise HTTPException(
+            status_code=409,
+            detail="Assessment is not finalized; complete human review, activities, dissent resolution, and approvals first",
+        )
     return assessment

@@ -8,7 +8,6 @@ import subprocess
 import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from urllib.error import URLError
 from urllib.parse import urlparse
 from urllib.request import urlopen
 

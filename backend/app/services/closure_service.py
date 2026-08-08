@@ -42,7 +42,6 @@ from app.services.closure_guidance import (
     sections_satisfy_contracts,
 )
 from app.services.controls.catalog import load_catalog
-from app.services.evidence_view import build_system_context_from_evidence
 from app.services.llm.runtime import build_provider_for_purpose
 from app.services.parsers.dispatcher import dispatch_parse
 from app.services.system_knowledge import get_latest_system_knowledge
@@ -168,6 +167,10 @@ def _approval_to_dict(a: ArtifactApproval) -> dict:
         "approval_chain": a.approval_chain,
         "current_step": a.current_step,
         "overall_status": a.overall_status,
+        "evidence_eligibility": a.evidence_eligibility,
+        "eligibility_rationale": a.eligibility_rationale,
+        "eligibility_decided_by": a.eligibility_decided_by,
+        "eligibility_decided_at": a.eligibility_decided_at.isoformat() if a.eligibility_decided_at else None,
         "created_at": a.created_at.isoformat() if a.created_at else None,
         "updated_at": a.updated_at.isoformat() if a.updated_at else None,
     }
@@ -1751,6 +1754,7 @@ Identified Gaps to Close:
                 approval_chain=list(approval_chain or _default_approval_chain(preparer_name)),
                 current_step=1,  # Reviewer is up next
                 overall_status="pending_review",
+                evidence_eligibility="draft",
             )
             db.add(approval)
             approvals.append(approval)

@@ -51,7 +51,9 @@ export default function Layout() {
     try {
       const refresh = getRefreshToken()
       if (refresh) await api.post('/auth/logout', { refresh_token: refresh })
-    } catch {}
+    } catch {
+      // Logout remains local when the server session is already unavailable.
+    }
     clearTokens()
     navigate('/login')
   }
@@ -60,7 +62,9 @@ export default function Layout() {
   let role = 'viewer'
   try {
     role = JSON.parse(atob(token.split('.')[1])).role
-  } catch {}
+  } catch {
+    // A missing or malformed token is handled as the least-privileged role.
+  }
 
   const isAdmin = ['system_admin'].includes(role)
   const isSecurityOfficer = ['system_admin', 'security_officer'].includes(role)

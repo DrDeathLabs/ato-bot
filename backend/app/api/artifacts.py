@@ -28,6 +28,13 @@ async def _load_assessment(assessment_id: int, project_id: int, db: AsyncSession
     return assessment
 
 
+async def _load_finalized_assessment(assessment_id: int, project_id: int, db: AsyncSession) -> Assessment:
+    assessment = await _load_assessment(assessment_id, project_id, db)
+    if assessment.finalization_status != "finalized":
+        raise HTTPException(status_code=409, detail="Assessment must be finalized before generating a SAR")
+    return assessment
+
+
 @router.get("/contingency-plan")
 async def generate_cp(
     project_id: int,
@@ -94,7 +101,7 @@ async def generate_sar_endpoint(
     db: AsyncSession = Depends(get_db),
     _: dict = Depends(require_assessor),
 ) -> FileResponse:
-    assessment = await _load_assessment(assessment_id, project_id, db)
+    assessment = await _load_finalized_assessment(assessment_id, project_id, db)
     proj_result = await db.execute(select(Project).where(Project.id == project_id))
     project = proj_result.scalar_one()
 

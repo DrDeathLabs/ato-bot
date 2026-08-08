@@ -16,7 +16,6 @@ from app.core.security import (
     decode_token,
     generate_totp_secret,
     get_totp_uri,
-    hash_password,
     verify_password,
     verify_totp,
 )

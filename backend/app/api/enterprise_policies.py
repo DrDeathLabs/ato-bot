@@ -149,7 +149,7 @@ async def update_library(
         lib.description = body.description
     if body.category is not None:
         if body.category not in POLICY_CATEGORIES:
-            raise HTTPException(status_code=400, detail=f"Invalid category.")
+            raise HTTPException(status_code=400, detail="Invalid category.")
         lib.category = body.category
 
     await db.commit()

@@ -17,11 +17,15 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+backend/.cache/
+backend/.local/
 
 # Node / frontend build
 node_modules/
 frontend/node_modules/
 frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
 
 # Runtime data and generated output
 backend/uploads/

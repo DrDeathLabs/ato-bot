@@ -1,31 +1,35 @@
 import { Component, lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import Login from './pages/Login'
-import ProjectList from './pages/ProjectList'
-import ProjectDetail from './pages/ProjectDetail'
-import AssessmentView from './pages/AssessmentView'
-import UserManagement from './pages/UserManagement'
-import AuditLog from './pages/security/AuditLog'
-import ProjectAuditLog from './pages/ProjectAuditLog'
-import SecurityDashboard from './pages/admin/SecurityDashboard'
-import PromptManager from './pages/admin/PromptManager'
-import IngestionConfig from './pages/admin/IngestionConfig'
-import CommonControls from './pages/CommonControls'
-import EnterprisePolicies from './pages/EnterprisePolicies'
-import EnterpriseProcedures from './pages/EnterpriseProcedures'
-import TestDatasetPage from './pages/TestDatasetPage'
-import ControlCatalogPage from './pages/ControlCatalogPage'
-import SystemKnowledgePage from './pages/SystemKnowledgePage'
-import CalibrationPage from './pages/CalibrationPage'
-import AssessmentPolicyPage from './pages/AssessmentPolicyPage'
-import SspWorkbenchPage from './pages/SspWorkbenchPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import { ControlReferenceProvider } from './components/ControlReference'
 import { FeatureRegistryProvider, useFeature } from './components/FeatureRegistry'
 
+const ProjectList = lazy(() => import('./pages/ProjectList'))
+const ProjectDetail = lazy(() => import('./pages/ProjectDetail'))
+const AssessmentView = lazy(() => import('./pages/AssessmentView'))
+const UserManagement = lazy(() => import('./pages/UserManagement'))
+const AuditLog = lazy(() => import('./pages/security/AuditLog'))
+const ProjectAuditLog = lazy(() => import('./pages/ProjectAuditLog'))
+const SecurityDashboard = lazy(() => import('./pages/admin/SecurityDashboard'))
+const PromptManager = lazy(() => import('./pages/admin/PromptManager'))
+const IngestionConfig = lazy(() => import('./pages/admin/IngestionConfig'))
+const CommonControls = lazy(() => import('./pages/CommonControls'))
+const EnterprisePolicies = lazy(() => import('./pages/EnterprisePolicies'))
+const EnterpriseProcedures = lazy(() => import('./pages/EnterpriseProcedures'))
+const TestDatasetPage = lazy(() => import('./pages/TestDatasetPage'))
+const ControlCatalogPage = lazy(() => import('./pages/ControlCatalogPage'))
+const SystemKnowledgePage = lazy(() => import('./pages/SystemKnowledgePage'))
+const CalibrationPage = lazy(() => import('./pages/CalibrationPage'))
+const AssessmentPolicyPage = lazy(() => import('./pages/AssessmentPolicyPage'))
+const SspWorkbenchPage = lazy(() => import('./pages/SspWorkbenchPage'))
 const IntegrationsPage = lazy(() => import('./pages/IntegrationsPage'))
 const CatoDashboardPage = lazy(() => import('./pages/CatoDashboardPage'))
+
+function PageFallback() {
+  return <div className="p-8 text-sm text-gray-500">Loading workspace...</div>
+}
 function ExperimentalCatoRoute({ children }) {
   const { id } = useParams()
   const experimentalCatoEnabled = useFeature('cato_dashboard')
@@ -62,6 +66,7 @@ export default function App() {
     <FeatureRegistryProvider>
       <ControlReferenceProvider>
         <BrowserRouter>
+          <Suspense fallback={<PageFallback />}>
           <Routes>
           <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
@@ -93,6 +98,7 @@ export default function App() {
           </Route>
           <Route path="*" element={<Navigate to="/projects" replace />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </ControlReferenceProvider>
     </FeatureRegistryProvider>

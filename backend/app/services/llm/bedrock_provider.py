@@ -72,7 +72,8 @@ class BedrockProvider(LLMProvider):
 
     async def complete(self, system_prompt: str, user_prompt: str) -> str:
         """Generic single-turn completion for non-assessment LLM calls."""
-        import asyncio, json
+        import asyncio
+        import json
         request_body = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 1024,

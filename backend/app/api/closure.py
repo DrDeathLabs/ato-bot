@@ -6,6 +6,7 @@ closing partial and non-compliant NIST 800-53 Rev 5 controls.
 from __future__ import annotations
 
 import os
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,8 +15,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.rbac import require_assessor, require_project_assessment_access, require_viewer
-from app.models.orm import ArtifactApproval, ControlClosureSession
+from app.core.rbac import require_assessor, require_project_assessment_access, require_reviewer, require_viewer
+from app.models.orm import ArtifactApproval, ControlClosureSession, Document
 from app.services import closure_service
 from app.core.config import get_settings
 
@@ -52,6 +53,11 @@ class ApprovalActionRequest(BaseModel):
     approver_org: str = ""
     action: str  # "approve" | "reject"
     comments: str = ""
+
+
+class EvidenceEligibilityRequest(BaseModel):
+    decision: str
+    rationale: str
 
 
 class CompleteSessionRequest(BaseModel):
@@ -307,6 +313,61 @@ async def advance_approval(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post(
+    "/sessions/{session_id}/approvals/{approval_id}/evidence-eligibility",
+    summary="Explicitly approve or reject an AI artifact for assessment evidence use",
+)
+async def decide_evidence_eligibility(
+    project_id: int,
+    assessment_id: int,
+    session_id: int,
+    approval_id: int,
+    body: EvidenceEligibilityRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(require_reviewer),
+) -> dict:
+    if body.decision not in {"eligible", "rejected"}:
+        raise HTTPException(status_code=422, detail="decision must be eligible or rejected")
+    if len(body.rationale.strip()) < 10:
+        raise HTTPException(status_code=422, detail="A review rationale of at least 10 characters is required")
+    approval = await db.scalar(
+        select(ArtifactApproval).where(
+            ArtifactApproval.id == approval_id,
+            ArtifactApproval.session_id == session_id,
+        )
+    )
+    if not approval:
+        raise HTTPException(status_code=404, detail="Artifact approval not found")
+    if body.decision == "eligible" and approval.overall_status != "approved":
+        raise HTTPException(status_code=409, detail="The artifact approval chain must be complete first")
+    document = await db.scalar(
+        select(Document).where(
+            Document.id == approval.document_id,
+            Document.project_id == project_id,
+            Document.source_assessment_id == assessment_id,
+        )
+    )
+    if not document:
+        raise HTTPException(status_code=404, detail="Generated document not found")
+
+    now = datetime.now(UTC)
+    approval.evidence_eligibility = body.decision
+    approval.eligibility_rationale = body.rationale.strip()
+    approval.eligibility_decided_by = current_user["id"]
+    approval.eligibility_decided_at = now
+    document.artifact_status = "approved" if body.decision == "eligible" else "rejected"
+    document.evidence_eligible = body.decision == "eligible"
+    document.artifact_approved_by = current_user["id"]
+    document.artifact_approved_at = now
+    await db.commit()
+    return {
+        "approval_id": approval.id,
+        "document_id": document.id,
+        "evidence_eligibility": approval.evidence_eligibility,
+        "rationale": approval.eligibility_rationale,
+    }
 
 
 @router.post("/sessions/{session_id}/complete", summary="Complete a closure session")

@@ -22,7 +22,6 @@ from app.models.orm import (
     Document,
     ProjectCommonProvider,
 )
-from app.models.schemas import DocumentResponse
 from app.services.evidence_view import get_document_evidence_payload
 
 router = APIRouter(prefix="/common-controls", tags=["common-controls"])

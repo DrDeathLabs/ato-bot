@@ -23,7 +23,10 @@ from app.models.orm import (
     AssessmentChallenge,
     AssessmentCriteriaPackage,
     AssessmentEvidenceTriage,
+    AssessmentActivity,
+    AssessmentPlan,
     AssessmentRollup,
+    AssessmentRetryJob,
     ControlDetermination,
     ControlFinding,
     Document,
@@ -43,7 +46,9 @@ from app.models.schemas import (
     FindingReviewRequest,
 )
 from app.services.activity_log import log_action
+from app.services.assessment_pipeline import get_scope_evidence_readiness
 from app.services.assessment_policy import get_active_assessment_policy
+from app.services.controls.catalog import load_baseline
 
 router = APIRouter(
     prefix="/projects/{project_id}/assessments",
@@ -53,11 +58,16 @@ router = APIRouter(
 settings = get_settings()
 
 
-async def _launch_assessment(assessment_id: int) -> None:
-    """Kick off a newly created or resumed assessment in-process."""
-    from app.services.assessment_engine import run_assessment
-
-    await run_assessment(assessment_id)
+async def _require_mutable_assessment(assessment_id: int, db: AsyncSession) -> Assessment:
+    assessment = await db.scalar(select(Assessment).where(Assessment.id == assessment_id))
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    if assessment.finalization_status == "finalized":
+        raise HTTPException(
+            status_code=409,
+            detail="The finalized assessment record is immutable. Start a new assessment to record changes.",
+        )
+    return assessment
 
 
 async def _effective_controls_complete(db: AsyncSession, assessment: Assessment) -> int:
@@ -147,6 +157,27 @@ async def start_assessment(
     )
     run_number = (run_count_result.scalar() or 0) + 1
     active_policy = await get_active_assessment_policy(db)
+    evidence_readiness = await get_scope_evidence_readiness(project_id, db)
+    if not evidence_readiness["ready"]:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Assessment evidence is not ready. Reprocess degraded documents before execution.",
+                **evidence_readiness,
+            },
+        )
+    controls = load_baseline(project.impact_baseline)
+    required_methods = {
+        item["method"]
+        for control in controls
+        for item in control.assessment_methods
+    }
+    missing_methods = sorted(required_methods - set(body.planned_methods))
+    if missing_methods:
+        raise HTTPException(
+            status_code=422,
+            detail=f"The selected baseline requires assessment methods: {', '.join(missing_methods)}",
+        )
 
     assessment = Assessment(
         project_id=project_id,
@@ -157,16 +188,60 @@ async def start_assessment(
         context_strategy=body.context_strategy,
         ollama_num_ctx=body.ollama_num_ctx or settings.ollama_num_ctx,
         skip_stage3=getattr(body, 'skip_stage3', False),
-        carry_forward_compliant=getattr(body, 'carry_forward_compliant', True),
+        carry_forward_compliant=getattr(body, 'carry_forward_compliant', False),
         started_by=current_user["id"],
         policy_id=active_policy.id if active_policy else None,
         policy_version=active_policy.version if active_policy else None,
     )
     db.add(assessment)
+    await db.flush()
+
+    plan = AssessmentPlan(
+        assessment_id=assessment.id,
+        title=body.plan_title,
+        status="approved",
+        scope_json={
+            "statement": body.scope_statement,
+            "project_id": project_id,
+            "impact_baseline": project.impact_baseline,
+            "document_ids": evidence_readiness["eligible_document_ids"],
+            "document_count": evidence_readiness["eligible_document_count"],
+            "documents": evidence_readiness["eligible_documents"],
+            "fingerprint": evidence_readiness["scope_fingerprint"],
+        },
+        control_selection_json={
+            "baseline": project.impact_baseline,
+            "control_count": len(controls),
+            "control_ids": [control.display_id for control in controls],
+        },
+        methods_json=body.planned_methods,
+        objects_json=body.assessment_objects,
+        depth=body.depth,
+        coverage=body.coverage,
+        assessor_id=current_user["id"],
+        approved_by=current_user["id"],
+        approved_at=datetime.now(UTC),
+        approval_note=body.plan_approval_note,
+    )
+    db.add(plan)
+    await db.flush()
+
+    for control in controls:
+        for procedure in control.assessment_methods:
+            method = str(procedure["method"])
+            if method not in body.planned_methods:
+                continue
+            db.add(AssessmentActivity(
+                assessment_id=assessment.id,
+                plan_id=plan.id,
+                control_id=control.display_id,
+                method=method,
+                assessment_objects=list(procedure.get("objects") or []),
+                description=f"{method.title()} the NIST-defined assessment objects for {control.display_id}.",
+                status="planned",
+            ))
     await db.commit()
     await db.refresh(assessment)
-    asyncio.create_task(_launch_assessment(assessment.id))
-
     return assessment
 
 
@@ -199,6 +274,8 @@ async def delete_assessment(
     assessment = result.scalar_one_or_none()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
+    if assessment.finalization_status == "finalized":
+        raise HTTPException(status_code=409, detail="A finalized assessment cannot be deleted")
     if assessment.status == "running":
         raise HTTPException(status_code=409, detail="Cannot delete a running assessment")
     await db.delete(assessment)
@@ -248,7 +325,6 @@ async def resume_assessment(
     assessment.paused_at = None
     await db.commit()
     await db.refresh(assessment)
-    asyncio.create_task(_launch_assessment(assessment.id))
     return assessment
 
 
@@ -755,7 +831,7 @@ async def retry_failed_findings(
     assessment_id: int,
     db: AsyncSession = Depends(get_db),
     _project_access: dict = Depends(require_project_assessment_access),
-    _: dict = Depends(require_assessor),
+    current_user: dict = Depends(require_assessor),
 ) -> dict:
     """Re-queue all not_reviewed findings for automated retry."""
     result = await db.execute(
@@ -764,6 +840,7 @@ async def retry_failed_findings(
     assessment = result.scalar_one_or_none()
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
+    await _require_mutable_assessment(assessment_id, db)
     if assessment.status == "running":
         raise HTTPException(status_code=409, detail="Assessment is already running")
 
@@ -777,10 +854,40 @@ async def retry_failed_findings(
     pending = count_result.scalars().all()
     if not pending:
         return {"queued": 0, "message": "No failed findings to retry"}
+    active_job = await db.scalar(
+        select(AssessmentRetryJob).where(
+            AssessmentRetryJob.assessment_id == assessment_id,
+            AssessmentRetryJob.status.in_(("pending", "running")),
+        )
+    )
+    if active_job:
+        raise HTTPException(status_code=409, detail="A failed-finding retry is already queued or running")
 
-    from app.services.retry_engine import retry_failed_findings as _retry
-    asyncio.create_task(_retry(assessment_id))
-    return {"queued": len(pending), "message": f"Retrying {len(pending)} failed findings"}
+    job = AssessmentRetryJob(
+        assessment_id=assessment_id,
+        control_ids=[finding.control_id for finding in pending],
+        created_by=current_user["id"],
+    )
+    db.add(job)
+    for finding in pending:
+        await log_action(
+            db,
+            project_id=project_id,
+            assessment_id=assessment_id,
+            control_id=finding.control_id,
+            control_family=finding.control_family,
+            control_title=finding.control_title,
+            action_type="retry_queued",
+            action_summary="Failed finding queued for durable worker retry",
+            performed_by=current_user["username"],
+        )
+    await db.commit()
+    await db.refresh(job)
+    return {
+        "queued": len(pending),
+        "job_id": job.id,
+        "message": f"Queued {len(pending)} failed findings for worker retry",
+    }
 
 
 @router.patch("/{assessment_id}/findings/{finding_id}/notes", response_model=ControlFindingResponse)
@@ -829,6 +936,7 @@ async def manual_resolve_finding(
     current_user: dict = Depends(require_reviewer),
 ) -> ControlFindingResponse:
     """Manually resolve a finding that could not be parsed automatically."""
+    await _require_mutable_assessment(assessment_id, db)
     result = await db.execute(
         select(ControlFinding).where(
             ControlFinding.id == finding_id,
@@ -875,6 +983,7 @@ async def review_finding(
     _project_access: dict = Depends(require_project_assessment_access),
     current_user: dict = Depends(require_reviewer),
 ) -> ControlFindingResponse:
+    await _require_mutable_assessment(assessment_id, db)
     result = await db.execute(
         select(ControlFinding).where(
             ControlFinding.id == finding_id,

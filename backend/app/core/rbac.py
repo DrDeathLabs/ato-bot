@@ -49,7 +49,7 @@ async def get_current_user(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Validate JWT and return payload dict with 'sub' and 'role'."""
-    from sqlalchemy import select, text
+    from sqlalchemy import select
     from app.models.orm import User
 
     credentials_exception = HTTPException(

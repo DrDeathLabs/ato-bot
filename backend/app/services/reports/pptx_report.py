@@ -44,7 +44,7 @@ async def generate_pptx(assessment_id: int) -> str:
 
     # ── Title Slide ────────────────────────────────────────────────────────────
     slide = prs.slides.add_slide(blank_layout)
-    _add_text(slide, f"Security Assessment Executive Briefing", Inches(1), Inches(2), Inches(11), Inches(1.5),
+    _add_text(slide, "Security Assessment Executive Briefing", Inches(1), Inches(2), Inches(11), Inches(1.5),
                size=36, bold=True, color=BLUE, align=PP_ALIGN.CENTER)
     _add_text(slide, project.name, Inches(1), Inches(3.5), Inches(11), Inches(0.8),
                size=24, color=BLUE, align=PP_ALIGN.CENTER)
@@ -130,7 +130,6 @@ def _add_text(slide, text: str, left, top, width, height,
 
 
 def _add_table(slide, headers, rows, left, top, width, height):
-    from pptx.util import Inches
     cols = len(headers)
     table = slide.shapes.add_table(len(rows) + 1, cols, left, top, width, height).table
     for j, h in enumerate(headers):

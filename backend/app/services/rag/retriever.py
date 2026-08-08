@@ -81,17 +81,22 @@ async def retrieve_chunks(
     embedding_provider: str = "voyage",
     max_tokens: int = 4096,
     extra_doc_ids: list[int] | None = None,
+    allowed_doc_ids: list[int] | None = None,
+    allowed_run_ids: list[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Retrieve top-K evidence excerpts with source metadata."""
-    doc_result = await db.execute(
-        select(Document.id).where(
-            Document.project_id == project_id,
-            Document.parse_status.in_(_INDEXED),
+    if allowed_doc_ids is not None:
+        doc_ids = list(dict.fromkeys(allowed_doc_ids))
+    else:
+        doc_result = await db.execute(
+            select(Document.id).where(
+                Document.project_id == project_id,
+                Document.parse_status.in_(_INDEXED),
+            )
         )
-    )
-    doc_ids = [row[0] for row in doc_result.fetchall()]
-    if extra_doc_ids:
-        doc_ids = list(set(doc_ids) | set(extra_doc_ids))
+        doc_ids = [row[0] for row in doc_result.fetchall()]
+        if extra_doc_ids:
+            doc_ids = list(set(doc_ids) | set(extra_doc_ids))
     if not doc_ids:
         return []
 
@@ -105,7 +110,9 @@ async def retrieve_chunks(
 
     embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
     accepted_models = accepted_model_names(embedding_meta["provider"], embedding_meta["model"])
-    return await _search_evidence_embeddings(project_id, db, doc_ids, embedding_str, top_k, max_tokens, accepted_models)
+    return await _search_evidence_embeddings(
+        project_id, db, doc_ids, embedding_str, top_k, max_tokens, accepted_models, allowed_run_ids
+    )
 
 
 async def retrieve_chunks_multi_query(
@@ -116,20 +123,25 @@ async def retrieve_chunks_multi_query(
     embedding_provider: str = "voyage",
     max_tokens: int = 4096,
     extra_doc_ids: list[int] | None = None,
+    allowed_doc_ids: list[int] | None = None,
+    allowed_run_ids: list[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Run multiple evidence searches and merge structured results."""
     if not queries:
         return []
 
-    doc_result = await db.execute(
-        select(Document.id).where(
-            Document.project_id == project_id,
-            Document.parse_status.in_(_INDEXED),
+    if allowed_doc_ids is not None:
+        doc_ids = list(dict.fromkeys(allowed_doc_ids))
+    else:
+        doc_result = await db.execute(
+            select(Document.id).where(
+                Document.project_id == project_id,
+                Document.parse_status.in_(_INDEXED),
+            )
         )
-    )
-    doc_ids = [row[0] for row in doc_result.fetchall()]
-    if extra_doc_ids:
-        doc_ids = list(set(doc_ids) | set(extra_doc_ids))
+        doc_ids = [row[0] for row in doc_result.fetchall()]
+        if extra_doc_ids:
+            doc_ids = list(set(doc_ids) | set(extra_doc_ids))
     if not doc_ids:
         return []
 
@@ -151,7 +163,9 @@ async def retrieve_chunks_multi_query(
 
         embedding_str = "[" + ",".join(str(v) for v in embedding) + "]"
         accepted_models = accepted_model_names(embedding_meta["provider"], embedding_meta["model"])
-        rows = await _raw_evidence_search(project_id, db, doc_ids, embedding_str, top_k_per_query, accepted_models)
+        rows = await _raw_evidence_search(
+            project_id, db, doc_ids, embedding_str, top_k_per_query, accepted_models, allowed_run_ids
+        )
 
         for row in rows:
             identity = (row["document_id"], row["content"])
@@ -175,8 +189,11 @@ async def _search_evidence_embeddings(
     top_k: int,
     max_tokens: int,
     accepted_models: list[str],
+    allowed_run_ids: list[int] | None = None,
 ) -> list[dict[str, Any]]:
-    rows = await _raw_evidence_search(project_id, db, doc_ids, embedding_str, top_k, accepted_models)
+    rows = await _raw_evidence_search(
+        project_id, db, doc_ids, embedding_str, top_k, accepted_models, allowed_run_ids
+    )
     chunks: list[dict[str, Any]] = []
     total_tokens = 0
     for row in rows:
@@ -195,9 +212,11 @@ async def _raw_evidence_search(
     embedding_str: str,
     top_k: int,
     accepted_models: list[str],
+    allowed_run_ids: list[int] | None = None,
 ) -> list[dict[str, Any]]:
     """Search evidence embeddings and return structured evidence rows."""
     try:
+        run_filter = "AND eu.run_id = ANY(:run_ids)" if allowed_run_ids else ""
         stmt = text(f"""
             SELECT
                 eu.content,
@@ -217,12 +236,18 @@ async def _raw_evidence_search(
             WHERE eu.document_id = ANY(:doc_ids)
               AND ee.embedding IS NOT NULL
               AND ee.model_name = ANY(:accepted_models)
+              {run_filter}
             ORDER BY ee.embedding <=> '{embedding_str}'::vector, ee.id ASC
             LIMIT :top_k
         """)
         result = await db.execute(
             stmt,
-            {"doc_ids": doc_ids, "top_k": top_k, "accepted_models": accepted_models},
+            {
+                "doc_ids": doc_ids,
+                "top_k": top_k,
+                "accepted_models": accepted_models,
+                **({"run_ids": allowed_run_ids} if allowed_run_ids else {}),
+            },
         )
         return [_to_chunk_dict(project_id, row) for row in result.fetchall()]
     except Exception as exc:

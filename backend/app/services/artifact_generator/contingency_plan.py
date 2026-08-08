@@ -139,14 +139,13 @@ def _extract_alternate_site(context: str, findings: list[dict]) -> str:
     keywords = ["alternate site", "disaster recovery site", "secondary site", "failover"]
     for kw in keywords:
         if kw.lower() in context.lower():
-            return f"Alternate processing site information extracted from system documentation. " + gap(
+            return "Alternate processing site information extracted from system documentation. " + gap(
                 "Confirm alternate site details: location, capacity, activation agreement number"
             )
     return ""
 
 
 def _extract_backup_schedule(context: str, findings: list[dict]) -> str:
-    import re
     combined = context + " ".join(str(f) for f in findings)
     if "daily backup" in combined.lower():
         return "Daily backups are performed as documented in the system security plan."

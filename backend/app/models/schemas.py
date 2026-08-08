@@ -149,6 +149,10 @@ class DocumentResponse(BaseModel):
     source_assessment_id: int | None = None
     source_assessment_run_number: int | None = None
     source_remediation_report_id: int | None = None
+    artifact_status: str | None = None
+    evidence_eligible: bool = True
+    artifact_approved_by: int | None = None
+    artifact_approved_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -162,8 +166,19 @@ class AssessmentStartRequest(BaseModel):
     ollama_num_ctx: int | None = Field(default=None, ge=2048, le=262144)
     skip_stage3: bool = Field(default=False)
     carry_forward_compliant: bool = Field(
-        default=True,
+        default=False,
         description="Carry forward compliant findings from the most recent assessment instead of re-testing them.",
+    )
+    plan_title: str = Field(min_length=3, max_length=255)
+    scope_statement: str = Field(min_length=20)
+    planned_methods: list[str] = Field(min_length=1)
+    assessment_objects: list[str] = Field(min_length=1)
+    depth: str = Field(default="focused")
+    coverage: str = Field(default="representative")
+    plan_approval_note: str = Field(min_length=10)
+    plan_approved: bool = Field(
+        default=False,
+        description="Explicit operator acknowledgement that the assessment plan is approved for execution.",
     )
 
     @field_validator("llm_provider")
@@ -179,6 +194,35 @@ class AssessmentStartRequest(BaseModel):
         if v not in {"rag", "full", "hybrid"}:
             raise ValueError("context_strategy must be rag, full, or hybrid")
         return v
+
+    @field_validator("planned_methods")
+    @classmethod
+    def validate_methods(cls, values: list[str]) -> list[str]:
+        normalized = list(dict.fromkeys(value.strip().upper() for value in values if value.strip()))
+        if not normalized or any(value not in {"EXAMINE", "INTERVIEW", "TEST"} for value in normalized):
+            raise ValueError("planned_methods may contain only EXAMINE, INTERVIEW, and TEST")
+        return normalized
+
+    @field_validator("depth")
+    @classmethod
+    def validate_depth(cls, value: str) -> str:
+        if value not in {"basic", "focused", "comprehensive"}:
+            raise ValueError("depth must be basic, focused, or comprehensive")
+        return value
+
+    @field_validator("coverage")
+    @classmethod
+    def validate_coverage(cls, value: str) -> str:
+        if value not in {"representative", "specific", "comprehensive"}:
+            raise ValueError("coverage must be representative, specific, or comprehensive")
+        return value
+
+    @field_validator("plan_approved")
+    @classmethod
+    def validate_plan_approved(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("The assessment plan must be explicitly approved before execution")
+        return value
 
 
 class AssessmentResponse(BaseModel):
@@ -201,7 +245,10 @@ class AssessmentResponse(BaseModel):
     paused_at: datetime | None = None
     progress_detail: str | None = None
     skip_stage3: bool = False
-    carry_forward_compliant: bool = True
+    carry_forward_compliant: bool = False
+    finalization_status: str = "not_ready"
+    finalized_by: int | None = None
+    finalized_at: datetime | None = None
 
     @property
     def run_duration_seconds(self) -> int | None:
@@ -372,6 +419,7 @@ class ControlActivityLogResponse(BaseModel):
 # ── POAM ──────────────────────────────────────────────────────────────────────
 
 class POAMCreate(BaseModel):
+    assessment_id: int | None = None
     control_id: str
     finding: str
     risk_level: str
@@ -379,6 +427,13 @@ class POAMCreate(BaseModel):
     remediation_plan: str | None = None
     due_date: datetime | None = None
     owner_id: int | None = None
+    owner_role: str = Field(min_length=2, max_length=128)
+    scheduled_completion_date: datetime
+    likelihood: str
+    impact: str
+    residual_risk: str
+    response_strategy: str
+    milestones: list[dict[str, Any]] = Field(min_length=1)
 
     @field_validator("risk_level")
     @classmethod
@@ -386,6 +441,35 @@ class POAMCreate(BaseModel):
         if v not in {"critical", "high", "medium", "low"}:
             raise ValueError("risk_level must be critical, high, medium, or low")
         return v
+
+    @field_validator("likelihood", "impact", "residual_risk")
+    @classmethod
+    def validate_risk_dimension(cls, value: str) -> str:
+        if value not in {"critical", "high", "moderate", "medium", "low"}:
+            raise ValueError("risk dimensions must be critical, high, moderate, medium, or low")
+        return value
+
+    @field_validator("response_strategy")
+    @classmethod
+    def validate_response_strategy(cls, value: str) -> str:
+        if value not in {"mitigate", "accept", "avoid", "transfer"}:
+            raise ValueError("response_strategy must be mitigate, accept, avoid, or transfer")
+        return value
+
+
+class POAMUpdate(BaseModel):
+    status: str | None = None
+    remediation_plan: str | None = None
+    due_date: datetime | None = None
+    owner_id: int | None = None
+    owner_role: str | None = None
+    scheduled_completion_date: datetime | None = None
+    likelihood: str | None = None
+    impact: str | None = None
+    residual_risk: str | None = None
+    response_strategy: str | None = None
+    milestones: list[dict[str, Any]] | None = None
+    acceptance_rationale: str | None = None
 
 
 class POAMResponse(BaseModel):
@@ -395,7 +479,21 @@ class POAMResponse(BaseModel):
     finding: str
     risk_level: str
     status: str
+    weakness: str | None = None
+    remediation_plan: str | None = None
+    milestones: list | None = None
+    owner_id: int | None = None
+    owner_role: str | None = None
     due_date: datetime | None
+    scheduled_completion_date: datetime | None = None
+    likelihood: str | None = None
+    impact: str | None = None
+    residual_risk: str | None = None
+    response_strategy: str | None = None
+    acceptance_rationale: str | None = None
+    accepted_by: int | None = None
+    accepted_at: datetime | None = None
+    assessment_id: int | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

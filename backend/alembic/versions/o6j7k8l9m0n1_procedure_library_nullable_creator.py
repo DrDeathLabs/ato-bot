@@ -5,7 +5,6 @@ Revises: n5i6j7k8l9m0
 Create Date: 2026-03-21
 """
 from alembic import op
-import sqlalchemy as sa
 
 revision = 'o6j7k8l9m0n1'
 down_revision = 'n5i6j7k8l9m0'

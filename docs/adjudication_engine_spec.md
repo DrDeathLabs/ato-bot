@@ -20,7 +20,7 @@ to:
 This spec is focused only on the new implementation. It does not address patent strategy.
 
 ## Current State
-The current control verdict logic in [multistage_engine.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/multistage_engine.py) uses:
+The current control verdict logic in [multistage_engine.py](../backend/app/services/multistage_engine.py) uses:
 - `yes = 1.0`
 - `partial = 0.5`
 - `no = 0.0`
@@ -410,7 +410,7 @@ This means the UI and reports will eventually need to expose:
 
 ### Phase 1: Policy and data model foundation
 Files likely affected:
-- [orm.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/models/orm.py)
+- [orm.py](../backend/app/models/orm.py)
 - Alembic migration files
 
 Tasks:
@@ -428,7 +428,7 @@ Tasks:
 
 ### Phase 3: Objective adjudication
 Files likely affected:
-- [multistage_engine.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/multistage_engine.py)
+- [multistage_engine.py](../backend/app/services/multistage_engine.py)
 
 Tasks:
 - preserve current LLM output path
@@ -436,7 +436,7 @@ Tasks:
 
 ### Phase 4: New control verdict engine
 Files likely affected:
-- [multistage_engine.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/multistage_engine.py)
+- [multistage_engine.py](../backend/app/services/multistage_engine.py)
 - new service module, e.g. `backend/app/services/control_adjudication.py`
 
 Tasks:

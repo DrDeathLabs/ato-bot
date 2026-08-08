@@ -384,15 +384,15 @@ function ClosureWizard({ session: initialSession, projectId, assessmentId, findi
 
 // ── Step 0: Gap Review ────────────────────────────────────────────────────────
 function GapReviewStep({ finding, session, projectId, assessmentId, onNext }) {
-  if (!finding) return <p className="text-gray-500 text-sm">Finding data not available.</p>
-
-  const sc = STATUS_COLORS[finding.status] || STATUS_COLORS.partially_compliant
-  const gaps = Array.isArray(finding.gaps) ? finding.gaps : (finding.gaps ? [finding.gaps] : [])
   const { data: guidance } = useQuery({
     queryKey: ['closure-guidance', assessmentId, session.control_id],
     queryFn: () => api.get(`/projects/${projectId}/assessments/${assessmentId}/closure/controls/${session.control_id}/guidance`).then(r => r.data),
     enabled: Boolean(projectId && assessmentId && session?.control_id),
   })
+  if (!finding) return <p className="text-gray-500 text-sm">Finding data not available.</p>
+
+  const sc = STATUS_COLORS[finding.status] || STATUS_COLORS.partially_compliant
+  const gaps = Array.isArray(finding.gaps) ? finding.gaps : (finding.gaps ? [finding.gaps] : [])
 
   return (
     <div className="space-y-5">
@@ -1082,7 +1082,7 @@ function CompletionStep({ session, projectId, assessmentId, onSessionUpdate, onC
         <ul className="text-blue-700 space-y-1">
           <li>1. Ensure all approvals in the chain are completed</li>
           <li>2. Wait for documents to finish indexing (status: Indexed)</li>
-          <li>3. Re-run the assessment — carry-forward is on by default, only this control will re-test</li>
+          <li>3. Re-run the assessment and explicitly enable carry-forward if unchanged compliant controls should be reused</li>
           <li>4. If still partial, review the artifact content and refine</li>
           <li>5. Update the system POAM if this control was a POA&amp;M item</li>
         </ul>

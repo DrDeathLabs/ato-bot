@@ -50,7 +50,7 @@ This makes the system broader than a document generator. It is closer to a compl
 
 ### Frontend
 
-The frontend is a React single-page application in [frontend/src/App.jsx](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/frontend/src/App.jsx) built with:
+The frontend is a React single-page application in [frontend/src/App.jsx](../frontend/src/App.jsx) built with:
 
 - React 18
 - React Router
@@ -76,7 +76,7 @@ Frontend routes show the main product surfaces:
 
 ### Backend
 
-The backend is a FastAPI application in [backend/app/main.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/main.py) using:
+The backend is a FastAPI application in [backend/app/main.py](../backend/app/main.py) using:
 
 - FastAPI
 - SQLAlchemy asyncio
@@ -96,7 +96,7 @@ The backend is split across:
 
 ### Data and AI dependencies
 
-Key backend dependencies from [backend/requirements.txt](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/requirements.txt):
+Key backend dependencies from [backend/requirements.txt](../backend/requirements.txt):
 
 - `python-docx`, `openpyxl`, `python-pptx`, `pymupdf`, `vsdx`, `pytesseract`, `Pillow`
 - `anthropic`, `boto3`, `ollama`, `httpx`
@@ -105,7 +105,7 @@ Key backend dependencies from [backend/requirements.txt](/C:/Users/Ddeat/OneDriv
 
 ### Deployment/runtime
 
-The Docker Compose stack in [docker-compose.yml](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/docker-compose.yml) runs:
+The Docker Compose stack in [docker-compose.yml](../docker-compose.yml) runs:
 
 - `postgres` using `pgvector/pgvector:pg16`
 - `redis`
@@ -113,9 +113,9 @@ The Docker Compose stack in [docker-compose.yml](/C:/Users/Ddeat/OneDrive/Docume
 - `worker`
 - `frontend`
 
-The backend entrypoint in [backend/start_backend.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/start_backend.py) waits for DB and Redis, applies Alembic migrations, then launches Uvicorn.
+The backend entrypoint in [backend/start_backend.py](../backend/start_backend.py) waits for DB and Redis, applies Alembic migrations, then launches Uvicorn.
 
-The worker entrypoint in [backend/start_worker.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/start_worker.py) waits for dependencies and launches the async job worker.
+The worker entrypoint in [backend/start_worker.py](../backend/start_worker.py) waits for dependencies and launches the async job worker.
 
 ## 4. High-Level Architecture
 
@@ -159,7 +159,7 @@ It is not a pure agent product and not a pure document store.
 
 ## 5. Primary Business Objects
 
-The ORM in [backend/app/models/orm.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/models/orm.py) shows the core data model.
+The ORM in [backend/app/models/orm.py](../backend/app/models/orm.py) shows the core data model.
 
 ### Identity and access
 
@@ -257,17 +257,17 @@ The user creates a project, uploads documents, links common control providers, a
 
 Relevant APIs:
 
-- [projects.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/projects.py)
-- [documents.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/documents.py)
-- [common_controls.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/common_controls.py)
-- [enterprise_policies.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/enterprise_policies.py)
-- [enterprise_procedures.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/enterprise_procedures.py)
+- [projects.py](../backend/app/api/projects.py)
+- [documents.py](../backend/app/api/documents.py)
+- [common_controls.py](../backend/app/api/common_controls.py)
+- [enterprise_policies.py](../backend/app/api/enterprise_policies.py)
+- [enterprise_procedures.py](../backend/app/api/enterprise_procedures.py)
 
 ### 6.2 Ingestion and evidence indexing
 
 The ingestion pipeline converts raw files into structured evidence with provenance, classification, and embeddings.
 
-The current repo's own ingestion spec in [atobot_ingestion_and_pre_assessment_flow_2026-03-24.md](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/docs/atobot_ingestion_and_pre_assessment_flow_2026-03-24.md) describes this well and matches the service layout.
+The current repo's own ingestion spec in [atobot_ingestion_and_pre_assessment_flow_2026-03-24.md](../docs/atobot_ingestion_and_pre_assessment_flow_2026-03-24.md) describes this well and matches the service layout.
 
 Stages:
 
@@ -288,10 +288,10 @@ Relevant service areas:
 
 Assessment flow is implemented through:
 
-- [assessments.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/assessments.py)
-- [assessment_engine.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/assessment_engine.py)
-- [assessment_pipeline.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/assessment_pipeline.py)
-- [multistage_engine.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/multistage_engine.py)
+- [assessments.py](../backend/app/api/assessments.py)
+- [assessment_engine.py](../backend/app/services/assessment_engine.py)
+- [assessment_pipeline.py](../backend/app/services/assessment_pipeline.py)
+- [multistage_engine.py](../backend/app/services/multistage_engine.py)
 
 Current model:
 
@@ -323,8 +323,8 @@ This is visible in the assessment UI and APIs and makes the system more auditabl
 
 The product also includes targeted control closure and remediation workflows:
 
-- [closure.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/closure.py)
-- [remediation.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/remediation.py)
+- [closure.py](../backend/app/api/closure.py)
+- [remediation.py](../backend/app/api/remediation.py)
 
 This allows the product to move from "identify gaps" into "generate or guide closing actions."
 
@@ -343,7 +343,7 @@ Assessment outputs can be exported as:
 
 Relevant APIs and services:
 
-- [reports.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/reports.py)
+- [reports.py](../backend/app/api/reports.py)
 - `services/reports/*`
 
 ### 6.7 System knowledge extraction
@@ -352,8 +352,8 @@ The architecture-and-tools workflow extracts structured system assertions and to
 
 Relevant APIs:
 
-- [system_knowledge.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/system_knowledge.py)
-- [system_profile.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/system_profile.py)
+- [system_knowledge.py](../backend/app/api/system_knowledge.py)
+- [system_profile.py](../backend/app/api/system_profile.py)
 
 This is one of the clearest investor-facing features because it turns unstructured compliance evidence into a reviewable architecture model.
 
@@ -371,9 +371,9 @@ The integration and cATO-oriented surfaces show a clear expansion path:
 
 Relevant files:
 
-- [integrations.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/integrations.py)
-- [services/integrations.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/integrations.py)
-- [services/ato_bot_security.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/ato_bot_security.py)
+- [integrations.py](../backend/app/api/integrations.py)
+- [services/integrations.py](../backend/app/services/integrations.py)
+- [services/ato_bot_security.py](../backend/app/services/ato_bot_security.py)
 
 ## 7. Ingestion and Retrieval Architecture
 
@@ -447,7 +447,7 @@ That is exactly the sort of guardrail story investors and enterprise buyers will
 
 ## 9. Background Processing Architecture
 
-The background worker in [job_worker.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/job_worker.py) continuously claims pending work from the database.
+The background worker in [job_worker.py](../backend/app/services/job_worker.py) continuously claims pending work from the database.
 
 Job lanes currently include:
 
@@ -481,11 +481,11 @@ Visible controls include:
 
 Relevant files:
 
-- [auth.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/auth.py)
-- [security.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/core/security.py)
-- [rbac.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/core/rbac.py)
-- [security_headers.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/middleware/security_headers.py)
-- [audit.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/middleware/audit.py)
+- [auth.py](../backend/app/api/auth.py)
+- [security.py](../backend/app/core/security.py)
+- [rbac.py](../backend/app/core/rbac.py)
+- [security_headers.py](../backend/app/middleware/security_headers.py)
+- [audit.py](../backend/app/middleware/audit.py)
 
 ### Infrastructure hardening
 

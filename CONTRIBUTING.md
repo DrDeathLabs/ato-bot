@@ -13,11 +13,14 @@ Run these before opening a pull request:
 
 ```powershell
 docker compose config --quiet
-docker compose exec -T backend python -m unittest discover -s tests -v
+docker compose exec -T backend pytest -q tests
+docker compose exec -T backend ruff check app tests --config pyproject.toml
 Set-Location frontend
 npm ci
 npm audit --audit-level=high
+npm run lint
 npm run build
+npm run e2e
 ```
 
 Do not submit real evidence documents, generated assessment packages, runtime collector payloads, `.env` files, database dumps, or credentials.

@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = [
+  # SQLAlchemy expression comparisons are deliberate and compile to SQL predicates.
+  "E712",
+  # Legacy cleanup debt is tracked separately from release-blocking correctness checks.
+  "F841",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/test_totality_review.py" = ["E402"]

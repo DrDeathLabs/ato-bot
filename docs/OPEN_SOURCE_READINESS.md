@@ -1,45 +1,49 @@
-# Open-Source Readiness Review
+# Open-Source Readiness
 
 ## Current Status
 
-ATO Bot is **not ready for a public repository yet**, but the first cleanup tranche is complete. The application runs, migrations are current, 24 backend unit tests pass, the frontend builds, and the frontend dependency audit reports zero known vulnerabilities after upgrades.
+ATO Bot remains private and is **not approved for public release**. Apache-2.0 licensing, repository governance, dynamic feature status, hardened JWT validation, Alembic-owned schema changes, a one-shot migration service, frontend route splitting, and baseline CI/security workflows are now present.
 
-## Completed in This Tranche
+Verified locally in the current cleanup branch:
 
-- Added Git, Docker, secret, runtime-data, and generated-output exclusions.
-- Prevented backend `.env`, uploads, outputs, tests, and local collector data from entering production image contexts.
-- Replaced `npm install` with deterministic `npm ci` in the frontend image.
-- Forced CPU-only PyTorch in the backend image so document embeddings do not pull an unused CUDA runtime.
-- Upgraded React Router and Vite to remove known frontend dependency vulnerabilities.
-- Removed the obsolete dashboard as a product entry point.
-- Made the incomplete cATO/integration slice experimental and disabled by default.
-- Removed the personal LAN IP from the public Compose configuration and defaulted to localhost-only exposure.
-- Added public README, security policy, contribution guidance, feature status, and CI configuration.
+- Moderate baseline: 324 unique controls and enhancements, 1,467 objectives, and all `EXAMINE`, `INTERVIEW`, and `TEST` method types preserved.
+- Frontend production entry chunk: 384 KB; no generated chunk exceeds 500 KB.
+- Frontend dependency audit: zero known vulnerabilities.
+- Python production dependency audit: zero known vulnerabilities.
+- Frontend lint: zero errors; legacy cleanup warnings remain.
+- Backend unit suite: 40 tests passed.
+- Core browser E2E passed locally in an isolated stack: login, feature metadata, project create/delete, logout, and invalid-login behavior.
+- Fresh migrations and governance downgrade/re-upgrade completed in disposable PostgreSQL/pgvector databases.
+- Reproducible Python dependency constraints are consumed by Docker and CI.
+- Existing local runtime data has not been migrated or modified.
 
-## P0 Before Public Release
+## Closed P0/P1 Foundations
 
-1. **Select a license.** The repository cannot be called open source without a public license. Apache-2.0 is recommended for consideration because it includes an explicit patent grant; ownership and patent strategy must be reviewed before adding it.
-2. **Move startup schema creation into Alembic.** `backend/app/main.py` currently contains 119 `CREATE`, `ALTER`, or index statements. Fresh installs work because application startup repairs the schema, but that is not a reviewable or reliable migration contract.
-3. **Run a full secret and sensitive-data review on the exact Git staging set.** The current workspace contains live `.env` files, host-identifying collector payloads, generated reports, uploads, and local Docker image archives. They are now ignored, but the staged file list must be inspected before the first commit.
-4. **Complete the backend dependency audit.** The hardened runtime blocked `pip-audit` temporary execution. CI now owns this check, but the first public commit must not proceed until it passes in a clean runner.
-5. **Add end-to-end authorization and assessment tests.** One 24-test module is insufficient for a security product with 35 API modules and 26 frontend pages.
+- Apache-2.0 `LICENSE`, `NOTICE`, DCO, Contributor Covenant, support and security policies.
+- Explicit Git allowlist posture through `.gitignore`, `.dockerignore`, and staged-file review requirements.
+- `PyJWT[crypto]` tokens with issuer, audience, subject, type, issued-at, identifier, expiry, and approved-algorithm validation.
+- Alembic ownership of schema changes; application startup performs no DDL.
+- Approved pre-run assessment plans with frozen evidence hashes and exact ingestion-run scope.
+- Explicit assessment activities for NIST `EXAMINE`, `INTERVIEW`, and `TEST` methods.
+- Human finding review, dissent resolution, tailoring decisions, POA&M completeness, dual approval, and finalization blockers.
+- Generated-artifact quarantine and explicit evidence eligibility.
+- Worker-only assessment execution and restart recovery.
+- Durable failed-finding retries that preserve frozen evidence scope, policy adjudication, and review invalidation across restarts.
+- Authoritative feature registry and a preserved experimental/unreachable capability inventory.
 
-## P1 Before a Stable Release
+## Remaining Publication Blockers
 
-- Add API integration tests for authentication, project isolation, assessment lifecycle, reviewer permissions, evidence eligibility, reports, and exports.
-- Add browser tests for login, upload, ingestion, assessment navigation, review, remediation, and downloads.
-- Replace broad unbounded Python dependency ranges with a reviewed lock or constraints process.
-- Split the frontend bundle; the default bundle remains over 1 MB before lazy-route cleanup is fully applied.
-- Add release versioning, changelog, container image provenance, SBOM generation, and signed release artifacts.
-- Review bundled NIST/OSCAL data provenance and add a `NOTICE` file for third-party data and dependencies.
+1. Run the full 20-family, 324-control, 1,467-objective regression against the release candidate and meet documented stability tolerances.
+2. Add broader API project-isolation and permission tests across every route group; current coverage is still materially below a mature security product target.
+3. Run the locally passing browser workflow in private GitHub Actions and resolve any environment-specific failures.
+4. Validate semantic reconciliation across UI, database, SAR, POA&M, SSP, Word, Excel, JSON, and OSCAL exports using a finalized governed assessment.
+5. Populate and approve calibration suites for every supported model/prompt/policy/retrieval combination.
+6. Run CodeQL, dependency review, Gitleaks, Trivy, and SBOM workflows on the exact candidate commit.
+7. Back up the live local database, test the upgrade on the backup, rotate all deployment credentials, and verify login after backend-only recreation.
+8. Resolve every item in `EXPERIMENTAL_CAPABILITIES.md` with a recorded retain/promote/remove/defer decision.
+9. Review the exact staged file set for private evidence, reports, host identifiers, archives, and patent material.
+10. Configure protected `main` branch checks in the private GitHub repository; this cannot be enforced by local files alone.
 
 ## Publication Gate
 
-Before creating the GitHub repository:
-
-1. Add the selected `LICENSE` and `NOTICE` files.
-2. Initialize Git locally.
-3. Run `git status --ignored` and inspect every staged file.
-4. Run the CI workflow locally or in a private GitHub repository.
-5. Confirm no real evidence, credentials, customer names, hostnames, internal IPs, generated reports, or patent work product are staged.
-6. Tag the first release only after the migration and test P0 items are closed.
+Public visibility is allowed only after every blocker above is evidenced on one immutable release commit and receives final human approval. A passing unit suite or successful build alone is not publication approval.

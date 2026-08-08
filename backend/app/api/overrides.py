@@ -77,20 +77,20 @@ async def upsert_override(
 
         # Log the applicability change
         if body.applicability is None:
-            summary = f"Applicability override cleared — control returned to auto-assessment"
+            summary = "Applicability override cleared — control returned to auto-assessment"
             atype = "override_cleared"
         elif body.applicability == "not_applicable":
-            summary = f"Marked Not Applicable by assessor"
+            summary = "Marked Not Applicable by assessor"
             if body.applicability_rationale:
                 summary += f". Rationale: {body.applicability_rationale}"
             atype = "override_not_applicable"
         elif body.applicability == "inherited":
-            summary = f"Marked as Inherited from provider/platform"
+            summary = "Marked as Inherited from provider/platform"
             if body.applicability_rationale:
                 summary += f". Rationale: {body.applicability_rationale}"
             atype = "override_inherited"
         else:  # applicable
-            summary = f"Marked as Applicable (overriding prior N/A determination)"
+            summary = "Marked as Applicable (overriding prior N/A determination)"
             if body.applicability_rationale:
                 summary += f". Rationale: {body.applicability_rationale}"
             atype = "override_applicable"
@@ -257,10 +257,11 @@ def _resolve_catalog_control(control_id: str):
 
 async def _get_latest_finding_snapshot(project_id: int, control_id: str, db: AsyncSession) -> dict | None:
     """Get the most recent completed finding for a control to use as carry-forward snapshot."""
-    from app.models.orm import Assessment
+    from app.models.orm import Assessment, AssessmentPlan
     result = await db.execute(
-        select(ControlFinding)
+        select(ControlFinding, AssessmentPlan.scope_json)
         .join(Assessment, Assessment.id == ControlFinding.assessment_id)
+        .outerjoin(AssessmentPlan, AssessmentPlan.assessment_id == Assessment.id)
         .where(
             Assessment.project_id == project_id,
             ControlFinding.control_id == control_id,
@@ -269,9 +270,10 @@ async def _get_latest_finding_snapshot(project_id: int, control_id: str, db: Asy
         .order_by(ControlFinding.tested_at.desc().nullslast(), ControlFinding.id.desc())
         .limit(1)
     )
-    finding = result.scalar_one_or_none()
-    if not finding:
+    row = result.first()
+    if not row:
         return None
+    finding, scope_json = row
     return {
         "status": finding.status,
         "implementation_statement": finding.implementation_statement,
@@ -280,4 +282,5 @@ async def _get_latest_finding_snapshot(project_id: int, control_id: str, db: Asy
         "remediation_plan": finding.remediation_plan,
         "confidence_score": finding.confidence_score,
         "notes": finding.notes,
+        "evidence_scope_fingerprint": (scope_json or {}).get("fingerprint"),
     }

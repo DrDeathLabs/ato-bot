@@ -15,6 +15,12 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     if (error.response?.status === 401 && !error.config._retry) {
+      const requestUrl = String(error.config?.url || '')
+      // Authentication forms own their errors; redirecting here erases the
+      // useful message before the login screen can render it.
+      if (requestUrl.includes('/auth/login') || requestUrl.includes('/auth/refresh')) {
+        return Promise.reject(error)
+      }
       error.config._retry = true
       const refresh = getRefreshToken()
       if (!refresh) {
@@ -30,6 +36,7 @@ api.interceptors.response.use(
       } catch {
         clearTokens()
         window.location.href = '/login'
+        return Promise.reject(error)
       }
     }
     return Promise.reject(error)

@@ -4,8 +4,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.rbac import Role, require_assessor, require_viewer, get_current_user
-from app.models.orm import Project
+from app.core.rbac import Role, require_assessor, require_viewer
+from app.models.orm import Assessment, Project
 from app.models.schemas import ProjectCreate, ProjectResponse, ProjectUpdate
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -80,5 +80,16 @@ async def delete_project(
     project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+    finalized_assessment = await db.scalar(
+        select(Assessment.id).where(
+            Assessment.project_id == project_id,
+            Assessment.finalization_status == "finalized",
+        ).limit(1)
+    )
+    if finalized_assessment:
+        raise HTTPException(
+            status_code=409,
+            detail="A project containing finalized assessments cannot be deleted",
+        )
     await db.delete(project)
     await db.commit()

@@ -17,6 +17,7 @@ ATO Bot produces assessment evidence analysis and draft control determinations. 
 - RBAC, audit logging, MFA support, runtime configuration, and security posture views
 
 Feature maturity and deprecation status are documented in [docs/FEATURE_STATUS.md](docs/FEATURE_STATUS.md).
+Known limitations and the security boundary are documented in [docs/LIMITATIONS.md](docs/LIMITATIONS.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## Quick Start
 
@@ -54,12 +55,17 @@ Open `http://127.0.0.1:3001` and sign in with the account created by the seed co
 
 ```powershell
 docker compose ps
-docker compose exec -T backend python -m unittest discover -s tests -v
+python -m venv backend/.venv
+backend/.venv/Scripts/python -m pip install --constraint backend/constraints.txt -r backend/requirements-dev.txt
+backend/.venv/Scripts/python -m pytest -q backend/tests
 Set-Location frontend
 npm ci
 npm audit --audit-level=high
+npm run lint
 npm run build
 ```
+
+`backend/constraints.txt` is generated from the supported Linux build and pins runtime and development dependencies. Update it deliberately when dependencies change, then rerun both dependency audits and image builds.
 
 ## Architecture
 
@@ -70,6 +76,7 @@ npm run build
 - Pluggable Ollama-compatible, Anthropic, and AWS Bedrock model runtimes
 
 Detailed architecture and assessment-flow documentation is under [`docs/`](docs/).
+Database upgrades are owned by Alembic and are run by the one-shot `migrate` Compose service before the web service and worker start. See [docs/UPGRADING.md](docs/UPGRADING.md).
 
 ## Security
 

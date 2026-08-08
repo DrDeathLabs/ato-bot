@@ -1,4 +1,4 @@
-"""OSCAL assessment-plan export for a completed assessment snapshot."""
+"""OSCAL assessment-plan export from the approved pre-execution plan."""
 from __future__ import annotations
 
 import json
@@ -9,7 +9,7 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
-from app.models.orm import Assessment, ControlFinding, Document, Project, User
+from app.models.orm import Assessment, AssessmentActivity, AssessmentPlan, Document, Project, User
 from app.services.reports.oscal_common import (
     api_url,
     build_metadata_identities,
@@ -36,11 +36,14 @@ async def generate_oscal_assessment_plan(assessment_id: int) -> str:
         if project is None:
             raise ValueError(f"Project {assessment.project_id} not found")
 
-        findings = (
+        plan = await db.scalar(select(AssessmentPlan).where(AssessmentPlan.assessment_id == assessment_id))
+        if plan is None or plan.status != "approved":
+            raise ValueError(f"Assessment {assessment_id} does not have an approved plan")
+        activities = (
             await db.execute(
-                select(ControlFinding)
-                .where(ControlFinding.assessment_id == assessment_id)
-                .order_by(ControlFinding.control_family, ControlFinding.control_id)
+                select(AssessmentActivity)
+                .where(AssessmentActivity.assessment_id == assessment_id)
+                .order_by(AssessmentActivity.method, AssessmentActivity.control_id, AssessmentActivity.id)
             )
         ).scalars().all()
         users = {}
@@ -49,13 +52,7 @@ async def generate_oscal_assessment_plan(assessment_id: int) -> str:
             user_rows = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
             users = {user.id: user for user in user_rows}
 
-        document_ids = sorted(
-            {
-                doc_id
-                for doc_id in (citation.get("document_id") for finding in findings for citation in (finding.evidence_citations or []))
-                if doc_id
-            }
-        )
+        document_ids = sorted(set(plan.scope_json.get("document_ids") or []))
         documents = {}
         if document_ids:
             docs = (await db.execute(select(Document).where(Document.id.in_(document_ids)))).scalars().all()
@@ -70,38 +67,44 @@ async def generate_oscal_assessment_plan(assessment_id: int) -> str:
     )
     assessment_platform_uuid = stable_uuid("assessment-platform", assessment.id)
 
+    control_ids = list(plan.control_selection_json.get("control_ids") or [])
     reviewed_controls = {
-        "description": f"Controls planned for review in assessment {assessment.project_run_number} for {project.name}.",
+        "description": plan.scope_json.get("statement") or f"Approved control scope for {project.name}.",
         "control-selections": [
             {
-                "description": "Control set planned for assessment review.",
-                "include-controls": [{"control-id": catalog_id(finding.control_id)} for finding in findings],
+                "description": (
+                    f"Approved {plan.control_selection_json.get('baseline', project.impact_baseline)} baseline "
+                    f"selection containing {len(control_ids)} controls."
+                ),
+                "include-controls": [{"control-id": catalog_id(control_id)} for control_id in control_ids],
             }
         ],
     }
 
-    tasks = [
-        {
-            "uuid": stable_uuid("assessment-task", assessment.id, "evidence-review"),
+    methods = list(plan.methods_json or [])
+    tasks = []
+    for method in methods:
+        method_activities = [row for row in activities if row.method == method]
+        tasks.append({
+            "uuid": stable_uuid("assessment-task", assessment.id, method.lower()),
             "type": "action",
-            "title": "Review assessment evidence",
-            "description": "Review evidence records, triage citations, and implementation statements supporting the selected controls.",
+            "title": f"{method.title()} approved assessment objects",
+            "description": (
+                f"Perform {len(method_activities)} planned {method} procedures across the approved control scope. "
+                f"Record results and evidence references for assessor review."
+            ),
+            "props": [
+                prop("assessment-method", method),
+                prop("planned-activity-count", len(method_activities)),
+            ],
             "responsible-roles": [{"role-id": "assessor", "party-uuids": [p["uuid"] for p in parties if p["type"] == "person"]}],
-        },
-        {
-            "uuid": stable_uuid("assessment-task", assessment.id, "determine-results"),
-            "type": "action",
-            "title": "Determine control results",
-            "description": "Evaluate selected controls and record control-level findings, objective determinations, and residual risks.",
-            "responsible-roles": [{"role-id": "assessor", "party-uuids": [p["uuid"] for p in parties if p["type"] == "person"]}],
-        },
-    ]
+        })
 
     assessment_plan = {
         "uuid": stable_uuid("oscal-assessment-plan", assessment.id),
         "metadata": {
             "title": f"ATO Bot OSCAL assessment plan for {project.name}",
-            "last-modified": iso(assessment.completed_at or assessment.started_at),
+            "last-modified": iso(plan.approved_at or plan.updated_at or plan.created_at),
             "version": str(assessment.project_run_number),
             "oscal-version": OSCAL_VERSION,
             "roles": roles,
@@ -116,8 +119,14 @@ async def generate_oscal_assessment_plan(assessment_id: int) -> str:
                 prop("project-id", project.id),
                 prop("assessment-id", assessment.id),
                 prop("impact-baseline", project.impact_baseline),
+                prop("plan-status", plan.status),
+                prop("assessment-depth", plan.depth),
+                prop("assessment-coverage", plan.coverage),
+                prop("assessment-methods", ",".join(methods)),
             ],
-            "remarks": "Generated by ATO Bot as the formal OSCAL assessment-plan snapshot for this completed assessment run.",
+            "remarks": (
+                f"Approved before execution by user {plan.approved_by}. {plan.approval_note or ''}"
+            ).strip(),
         },
         "import-ssp": {
             "href": api_url(f"/api/projects/{project.id}/assessments/{assessment.id}/reports/oscal/ssp"),
@@ -127,7 +136,7 @@ async def generate_oscal_assessment_plan(assessment_id: int) -> str:
         "assessment-subjects": [
             {
                 "type": "component",
-                "description": f"All in-scope components for {project.name}.",
+                "description": "; ".join(plan.objects_json or []) or f"Approved assessment objects for {project.name}.",
                 "include-all": {},
             }
         ],

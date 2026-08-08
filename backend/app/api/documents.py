@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.rbac import require_assessor, require_project_access, require_viewer
-from sqlalchemy import func, distinct
 from app.models.orm import Assessment, Document, Project
 from app.models.schemas import DocumentResponse
 from app.services.evidence_view import (

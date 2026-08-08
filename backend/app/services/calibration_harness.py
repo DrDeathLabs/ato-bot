@@ -4,7 +4,7 @@ from __future__ import annotations
 from collections import Counter
 from datetime import UTC, datetime
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.orm import (

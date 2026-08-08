@@ -5147,16 +5147,33 @@ function SelectedControlPanel({
   onDiscuss,
   onClose,
 }) {
-  if (!finding) {
-    return null
-  }
-
   const qc = useQueryClient()
   const [drawerView, setDrawerView] = useState('summary')
+  const selectedControlId = finding?.control_id || ''
 
   useEffect(() => {
     setDrawerView('summary')
-  }, [finding.control_id])
+  }, [selectedControlId])
+  const { data: closureGuidance, isLoading: guidanceLoading } = useQuery({
+    queryKey: ['closure-guidance', projectId, assessmentId, selectedControlId],
+    queryFn: () => api.get(`/projects/${projectId}/assessments/${assessmentId}/closure/controls/${encodeURIComponent(selectedControlId)}/guidance`).then(r => r.data),
+    enabled: !!selectedControlId,
+  })
+  const { data: draftPackage, isLoading: draftPackageLoading } = useQuery({
+    queryKey: ['control-draft-package', projectId, assessmentId, selectedControlId],
+    queryFn: () => api.get(`/projects/${projectId}/assessments/${assessmentId}/closure/controls/${encodeURIComponent(selectedControlId)}/draft-package`).then(r => r.data),
+    enabled: !!selectedControlId,
+  })
+  const generateDraftPackage = useMutation({
+    mutationFn: () => api.post(`/projects/${projectId}/assessments/${assessmentId}/closure/controls/${encodeURIComponent(selectedControlId)}/draft-package`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['control-draft-package', projectId, assessmentId, selectedControlId] })
+      qc.invalidateQueries({ queryKey: ['draft-package-report', assessmentId] })
+    },
+  })
+  if (!finding) {
+    return null
+  }
 
   const displayStatus = effectiveStatus(finding.status, override)
   const evidenceCount = Array.isArray(finding.evidence_citations) ? finding.evidence_citations.length : 0
@@ -5166,23 +5183,6 @@ function SelectedControlPanel({
     || cleanFindingDetail(finding.notes)
     || cleanFindingDetail(finding.llm_challenge_note)
     || 'The assessment recorded a determination for this control. Use the evidence section below to inspect the supporting record and decide whether follow-up is needed.'
-  const { data: closureGuidance, isLoading: guidanceLoading } = useQuery({
-    queryKey: ['closure-guidance', projectId, assessmentId, finding.control_id],
-    queryFn: () => api.get(`/projects/${projectId}/assessments/${assessmentId}/closure/controls/${encodeURIComponent(finding.control_id)}/guidance`).then(r => r.data),
-    enabled: !!finding?.control_id,
-  })
-  const { data: draftPackage, isLoading: draftPackageLoading } = useQuery({
-    queryKey: ['control-draft-package', projectId, assessmentId, finding.control_id],
-    queryFn: () => api.get(`/projects/${projectId}/assessments/${assessmentId}/closure/controls/${encodeURIComponent(finding.control_id)}/draft-package`).then(r => r.data),
-    enabled: !!finding?.control_id,
-  })
-  const generateDraftPackage = useMutation({
-    mutationFn: () => api.post(`/projects/${projectId}/assessments/${assessmentId}/closure/controls/${encodeURIComponent(finding.control_id)}/draft-package`, {}),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['control-draft-package', projectId, assessmentId, finding.control_id] })
-      qc.invalidateQueries({ queryKey: ['draft-package-report', assessmentId] })
-    },
-  })
   const objectiveContracts = Array.isArray(closureGuidance?.objective_contracts) ? closureGuidance.objective_contracts : []
   const recommendedArtifactTypes = Array.isArray(closureGuidance?.recommended_artifact_types) ? closureGuidance.recommended_artifact_types : []
   const collectionGuidanceItems = Array.isArray(closureGuidance?.collection_guidance) ? closureGuidance.collection_guidance : []
@@ -5892,6 +5892,238 @@ function AssessmentNavigationBar({
           </>
       </div>
     </div>
+  )
+}
+
+
+function AssessmentFinalization({ projectId, assessmentId, assessment }) {
+  const qc = useQueryClient()
+  const base = `/projects/${projectId}/assessments/${assessmentId}/governance`
+  const [activityDraft, setActivityDraft] = useState(null)
+  const [dissentDraft, setDissentDraft] = useState(null)
+  const [tailoringDraft, setTailoringDraft] = useState({
+    control_id: '', decision_type: 'odp', parameter_id: '', value: '', rationale: '', evidence_refs: '',
+  })
+  const [approvalStatement, setApprovalStatement] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
+
+  const useGovernanceQuery = (name, path) => useQuery({
+    queryKey: ['assessment-governance', name, assessmentId],
+    queryFn: () => api.get(`${base}${path}`).then((response) => response.data),
+    enabled: !!assessmentId,
+  })
+  const { data: plan } = useGovernanceQuery('plan', '/plan')
+  const { data: readiness } = useGovernanceQuery('readiness', '/readiness')
+  const { data: activities = [] } = useGovernanceQuery('activities', '/activities')
+  const { data: tailoring = [] } = useGovernanceQuery('tailoring', '/tailoring')
+  const { data: dissents = [] } = useGovernanceQuery('dissents', '/dissents')
+  const { data: approvals = [] } = useGovernanceQuery('approvals', '/approvals')
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['assessment-governance'] })
+    qc.invalidateQueries({ queryKey: ['assessment', assessmentId] })
+  }
+  const useGovernanceMutation = (mutationFn, onSuccess) => useMutation({
+    mutationFn,
+    onSuccess: (data) => {
+      setErrorMessage('')
+      refresh()
+      onSuccess?.(data)
+    },
+    onError: (error) => setErrorMessage(
+      typeof error.response?.data?.detail === 'string'
+        ? error.response.data.detail
+        : error.response?.data?.detail?.message || error.message
+    ),
+  })
+  const completeActivity = useGovernanceMutation(
+    ({ id, result, evidenceRefs }) => api.patch(`${base}/activities/${id}/complete`, {
+      result,
+      evidence_refs: evidenceRefs.split('\n').map((value) => value.trim()).filter(Boolean),
+    }),
+    () => setActivityDraft(null),
+  )
+  const createTailoring = useGovernanceMutation(
+    () => api.post(`${base}/tailoring`, {
+      control_id: tailoringDraft.control_id,
+      decision_type: tailoringDraft.decision_type,
+      parameter_id: tailoringDraft.parameter_id || null,
+      value: tailoringDraft.value || null,
+      rationale: tailoringDraft.rationale,
+      evidence_refs: tailoringDraft.evidence_refs.split('\n').map((value) => value.trim()).filter(Boolean),
+    }),
+    () => setTailoringDraft({ control_id: '', decision_type: 'odp', parameter_id: '', value: '', rationale: '', evidence_refs: '' }),
+  )
+  const reviewTailoring = useGovernanceMutation(
+    ({ id, status }) => api.patch(`${base}/tailoring/${id}/review`, { status }),
+  )
+  const resolveDissent = useGovernanceMutation(
+    ({ controlId, status, note }) => api.patch(`${base}/dissents/${controlId}`, { resolution_status: status, note }),
+    () => setDissentDraft(null),
+  )
+  const recordApproval = useGovernanceMutation(
+    (approvalType) => api.post(`${base}/approvals`, { approval_type: approvalType, statement: approvalStatement }),
+    () => setApprovalStatement(''),
+  )
+  const finalize = useGovernanceMutation(() => api.post(`${base}/finalize`))
+
+  const incompleteActivities = activities.filter((row) => row.status !== 'completed' || !row.reviewed_by)
+  const unresolvedDissents = dissents.filter((row) => !['resolved', 'dismissed'].includes(row.resolution_status))
+  const approvedTypes = new Set(approvals.filter((row) => row.decision === 'approved').map((row) => row.approval_type))
+  const blockerCount = (readiness?.blockers || []).reduce((sum, blocker) => sum + Number(blocker.count || 0), 0)
+
+  return (
+    <section className="rounded-2xl border border-slate-300 bg-white px-5 py-5">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Assessment finalization</p>
+          <h3 className="mt-1 text-lg font-bold text-slate-950">
+            {assessment?.finalization_status === 'finalized' ? 'Final assessment record' : 'Human review and approval gates'}
+          </h3>
+          <p className="mt-1 max-w-3xl text-sm text-slate-600">
+            Automated findings remain draft until required assessment activities, control reviews, tailoring decisions, dissents, POA&amp;Ms, and independent approvals are complete.
+          </p>
+        </div>
+        <div className={`rounded-xl border px-4 py-3 ${readiness?.ready ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
+          <p className={`text-xs font-semibold uppercase ${readiness?.ready ? 'text-emerald-700' : 'text-amber-700'}`}>
+            {assessment?.finalization_status === 'finalized' ? 'Finalized' : readiness?.ready ? 'Ready to finalize' : 'Not ready'}
+          </p>
+          <p className="mt-1 text-2xl font-bold text-slate-900">{blockerCount}</p>
+          <p className="text-xs text-slate-600">unresolved gate items</p>
+        </div>
+      </div>
+
+      {errorMessage && (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{errorMessage}</div>
+      )}
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-3">
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 xl:col-span-1">
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Approved plan</p>
+          <p className="mt-2 text-sm font-semibold text-blue-950">{plan?.title || 'Loading plan...'}</p>
+          <p className="mt-2 text-sm text-blue-900">{plan?.scope?.statement}</p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            {(plan?.methods || []).map((method) => <span key={method} className="rounded-full bg-white px-2.5 py-1 font-semibold text-blue-700">{method}</span>)}
+            {plan?.depth && <span className="rounded-full bg-white px-2.5 py-1 text-blue-700">{plan.depth} depth</span>}
+            {plan?.coverage && <span className="rounded-full bg-white px-2.5 py-1 text-blue-700">{plan.coverage} coverage</span>}
+          </div>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 xl:col-span-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">Open gates</p>
+          {(readiness?.blockers || []).length ? (
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {readiness.blockers.map((blocker) => (
+                <div key={blocker.code} className="rounded-lg border border-gray-200 bg-white px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-gray-900">{blocker.message}</p>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">{blocker.count}</span>
+                  </div>
+                  {blocker.items?.length > 0 && <p className="mt-2 text-xs text-gray-500">{blocker.items.slice(0, 8).join(', ')}{blocker.count > 8 ? ' ...' : ''}</p>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-emerald-700">All governance gates are satisfied.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-2">
+        <details className="rounded-xl border border-gray-200 bg-white p-4" open={incompleteActivities.length > 0}>
+          <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+            Assessment activities ({activities.length - incompleteActivities.length}/{activities.length} complete)
+          </summary>
+          <p className="mt-2 text-xs text-gray-500">ATO Bot records document examination. A qualified assessor must record each planned interview and technical test result with a source reference.</p>
+          <div className="mt-3 space-y-2">
+            {incompleteActivities.slice(0, 20).map((row) => (
+              <div key={row.id} className="rounded-lg border border-gray-200 px-3 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div><span className="font-mono text-xs font-bold text-blue-700">{row.control_id}</span><span className="ml-2 text-xs font-semibold text-gray-600">{row.method}</span></div>
+                  <button
+                    type="button"
+                    onClick={() => setActivityDraft({
+                      id: row.id,
+                      result: row.result || '',
+                      evidenceRefs: (row.evidence_refs || []).map((value) => (
+                        typeof value === 'string' ? value : JSON.stringify(value)
+                      )).join('\n'),
+                    })}
+                    className="text-xs font-semibold text-blue-700"
+                  >
+                    {row.status === 'performed' ? 'Review result' : 'Record result'}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">{row.description}</p>
+                {activityDraft?.id === row.id && (
+                  <div className="mt-3 space-y-2">
+                    <textarea rows={3} value={activityDraft.result} onChange={(event) => setActivityDraft({ ...activityDraft, result: event.target.value })} placeholder="What was interviewed or tested, how it was performed, and the observed result" className="w-full rounded-lg border px-3 py-2 text-sm" />
+                    <textarea rows={2} value={activityDraft.evidenceRefs} onChange={(event) => setActivityDraft({ ...activityDraft, evidenceRefs: event.target.value })} placeholder="One evidence, interview, ticket, test script, or result reference per line" className="w-full rounded-lg border px-3 py-2 text-sm" />
+                    <button type="button" disabled={completeActivity.isPending || activityDraft.result.trim().length < 10 || !activityDraft.evidenceRefs.trim()} onClick={() => completeActivity.mutate(activityDraft)} className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">Save activity record</button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {incompleteActivities.length > 20 && <p className="text-xs text-gray-500">Showing 20 of {incompleteActivities.length} incomplete activities.</p>}
+            {incompleteActivities.length === 0 && <p className="text-sm text-emerald-700">All planned activities have recorded results.</p>}
+          </div>
+        </details>
+
+        <details className="rounded-xl border border-gray-200 bg-white p-4" open={unresolvedDissents.length > 0}>
+          <summary className="cursor-pointer text-sm font-semibold text-gray-900">AI dissent resolution ({unresolvedDissents.length} open)</summary>
+          <div className="mt-3 space-y-2">
+            {unresolvedDissents.slice(0, 20).map((row) => (
+              <div key={row.control_id} className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-3">
+                <p className="font-mono text-xs font-bold text-violet-800">{row.control_id}</p>
+                <p className="mt-1 text-xs text-violet-900">{row.dissent_note || 'The secondary review disagreed with the draft determination.'}</p>
+                <button type="button" onClick={() => setDissentDraft({ controlId: row.control_id, status: 'resolved', note: '' })} className="mt-2 text-xs font-semibold text-violet-700">Resolve dissent</button>
+                {dissentDraft?.controlId === row.control_id && (
+                  <div className="mt-3 space-y-2">
+                    <select value={dissentDraft.status} onChange={(event) => setDissentDraft({ ...dissentDraft, status: event.target.value })} className="rounded-lg border px-3 py-2 text-sm"><option value="resolved">Resolved through reviewer determination</option><option value="dismissed">Dismissed with rationale</option></select>
+                    <textarea rows={3} value={dissentDraft.note} onChange={(event) => setDissentDraft({ ...dissentDraft, note: event.target.value })} placeholder="Document the evidence and judgment that resolved the disagreement" className="w-full rounded-lg border px-3 py-2 text-sm" />
+                    <button type="button" disabled={resolveDissent.isPending || dissentDraft.note.trim().length < 10} onClick={() => resolveDissent.mutate(dissentDraft)} className="rounded-lg bg-violet-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40">Save resolution</button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {unresolvedDissents.length === 0 && <p className="text-sm text-emerald-700">All AI dissents have a human resolution.</p>}
+          </div>
+        </details>
+
+        <details className="rounded-xl border border-gray-200 bg-white p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-gray-900">Tailoring and organization-defined parameters ({tailoring.length})</summary>
+          <div className="mt-3 space-y-3">
+            {tailoring.map((row) => (
+              <div key={row.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs">
+                <span><strong>{row.control_id}</strong> {row.decision_type}{row.parameter_id ? ` / ${row.parameter_id}` : ''}</span>
+                <div className="flex items-center gap-2"><span className="font-semibold">{row.status}</span>{row.status === 'proposed' && <><button type="button" onClick={() => reviewTailoring.mutate({ id: row.id, status: 'approved' })} className="text-emerald-700">Approve</button><button type="button" onClick={() => reviewTailoring.mutate({ id: row.id, status: 'rejected' })} className="text-red-700">Reject</button></>}</div>
+              </div>
+            ))}
+            <div className="grid gap-2 md:grid-cols-2">
+              <input value={tailoringDraft.control_id} onChange={(event) => setTailoringDraft({ ...tailoringDraft, control_id: event.target.value })} placeholder="Control ID" className="rounded-lg border px-3 py-2 text-sm" />
+              <select value={tailoringDraft.decision_type} onChange={(event) => setTailoringDraft({ ...tailoringDraft, decision_type: event.target.value })} className="rounded-lg border px-3 py-2 text-sm"><option value="odp">Organization-defined parameter</option><option value="inherited">Inherited</option><option value="compensating">Compensating control</option><option value="not_applicable">Not applicable</option></select>
+              <input value={tailoringDraft.parameter_id} onChange={(event) => setTailoringDraft({ ...tailoringDraft, parameter_id: event.target.value })} placeholder="Parameter ID, when applicable" className="rounded-lg border px-3 py-2 text-sm" />
+              <input value={tailoringDraft.value} onChange={(event) => setTailoringDraft({ ...tailoringDraft, value: event.target.value })} placeholder="Approved value or decision" className="rounded-lg border px-3 py-2 text-sm" />
+            </div>
+            <textarea rows={2} value={tailoringDraft.rationale} onChange={(event) => setTailoringDraft({ ...tailoringDraft, rationale: event.target.value })} placeholder="Rationale" className="w-full rounded-lg border px-3 py-2 text-sm" />
+            <textarea rows={2} value={tailoringDraft.evidence_refs} onChange={(event) => setTailoringDraft({ ...tailoringDraft, evidence_refs: event.target.value })} placeholder="Evidence references, one per line" className="w-full rounded-lg border px-3 py-2 text-sm" />
+            <button type="button" disabled={createTailoring.isPending || !tailoringDraft.control_id.trim() || tailoringDraft.rationale.trim().length < 10} onClick={() => createTailoring.mutate()} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-40">Add tailoring decision</button>
+          </div>
+        </details>
+
+        <details className="rounded-xl border border-gray-200 bg-white p-4" open={readiness?.ready || approvals.length > 0}>
+          <summary className="cursor-pointer text-sm font-semibold text-gray-900">Approval and finalization</summary>
+          <div className="mt-3 space-y-3">
+            <div className="flex flex-wrap gap-2 text-xs"><span className={`rounded-full px-2.5 py-1 ${approvedTypes.has('assessor') ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>Assessor approval</span><span className={`rounded-full px-2.5 py-1 ${approvedTypes.has('independent_reviewer') ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>Independent approval</span></div>
+            <textarea rows={3} value={approvalStatement} onChange={(event) => setApprovalStatement(event.target.value)} placeholder="Approval statement describing the review performed and the determination accepted" className="w-full rounded-lg border px-3 py-2 text-sm" />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={recordApproval.isPending || approvalStatement.trim().length < 20 || approvedTypes.has('assessor')} onClick={() => recordApproval.mutate('assessor')} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-40">Record assessor approval</button>
+              <button type="button" disabled={recordApproval.isPending || approvalStatement.trim().length < 20 || !approvedTypes.has('assessor') || approvedTypes.has('independent_reviewer')} onClick={() => recordApproval.mutate('independent_reviewer')} className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 disabled:opacity-40">Record independent approval</button>
+              <button type="button" disabled={finalize.isPending || !readiness?.ready || assessment?.finalization_status === 'finalized'} onClick={() => finalize.mutate()} className="rounded-lg bg-emerald-700 px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">Finalize assessment</button>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
   )
 }
 
@@ -6930,6 +7162,11 @@ export default function AssessmentView() {
 
         {activeTab === 'outputs' && (
           <div className="space-y-5">
+            <AssessmentFinalization
+              projectId={projectId}
+              assessmentId={assessmentId}
+              assessment={assessment}
+            />
             <div className="rounded-2xl border border-gray-200 bg-white px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Exports and downstream work</p>
               <p className="mt-2 text-sm text-gray-600">
@@ -6941,10 +7178,11 @@ export default function AssessmentView() {
                     key={fmt}
                     type="button"
                     onClick={() => downloadReport(fmt)}
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 text-left hover:bg-gray-100"
+                    disabled={assessment?.finalization_status !== 'finalized'}
+                    className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4 text-left hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-45"
                   >
                     <p className="text-sm font-semibold text-gray-900">{fmt.toUpperCase()} report</p>
-                    <p className="mt-1 text-xs text-gray-500">Download the current assessment report.</p>
+                    <p className="mt-1 text-xs text-gray-500">{assessment?.finalization_status === 'finalized' ? 'Download the finalized assessment report.' : 'Locked until human review and finalization are complete.'}</p>
                   </button>
                 ))}
                 <button type="button" onClick={() => downloadArtifact('contingency-plan')} className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-left hover:bg-blue-100">
@@ -6955,9 +7193,9 @@ export default function AssessmentView() {
                   <p className="text-sm font-semibold text-blue-900">Incident response plan</p>
                   <p className="mt-1 text-xs text-blue-700">Download the generated incident response plan artifact.</p>
                 </button>
-                <button type="button" onClick={() => downloadArtifact('sar')} className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-left hover:bg-blue-100">
+                <button type="button" disabled={assessment?.finalization_status !== 'finalized'} onClick={() => downloadArtifact('sar')} className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-4 text-left hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-45">
                   <p className="text-sm font-semibold text-blue-900">Security assessment report</p>
-                  <p className="mt-1 text-xs text-blue-700">Download the generated SAR document.</p>
+                  <p className="mt-1 text-xs text-blue-700">{assessment?.finalization_status === 'finalized' ? 'Download the finalized SAR document.' : 'Locked until human review and finalization are complete.'}</p>
                 </button>
               </div>
             </div>

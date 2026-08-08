@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api import auth, users
 from app.api.projects import router as projects_router
@@ -41,8 +42,8 @@ from app.api.calibration import router as calibration_router
 from app.api.assessment_policy import router as assessment_policy_router
 from app.api.ssp import router as ssp_router
 from app.api.meta import router as meta_router
+from app.api.assessment_governance import router as assessment_governance_router
 from app.core.config import get_settings
-from app.core.database import Base, engine
 from app.core.rate_limit import limiter
 from app.middleware.audit import audit_middleware
 from app.middleware.security_headers import security_headers_middleware
@@ -105,7 +106,6 @@ app.add_middleware(
 )
 
 # Custom middleware (registered via add_middleware using starlette BaseHTTPMiddleware)
-from starlette.middleware.base import BaseHTTPMiddleware
 app.add_middleware(BaseHTTPMiddleware, dispatch=security_headers_middleware)
 app.add_middleware(BaseHTTPMiddleware, dispatch=audit_middleware)
 
@@ -116,6 +116,7 @@ app.include_router(users.router, prefix="/api")
 app.include_router(projects_router, prefix="/api")
 app.include_router(documents_router, prefix="/api")
 app.include_router(assessments_router, prefix="/api")
+app.include_router(assessment_governance_router, prefix="/api")
 app.include_router(reports_router, prefix="/api")
 app.include_router(artifacts_router, prefix="/api")
 app.include_router(audit_log_router, prefix="/api")

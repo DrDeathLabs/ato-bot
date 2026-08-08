@@ -13,12 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.models.orm import (
-    Assessment, ControlFinding, ControlOverride,
-    Document, Project,
+    Assessment, AssessmentActivity, AssessmentPlan, ControlFinding, ControlOverride,
+    Document, IngestionRun, Project,
 )
 from app.services.assessment_pipeline import (
     assess_control_with_assessor_pipeline,
-    build_scope_document_ids,
     preload_evidence_index,
 )
 from app.services.assessment_policy import build_policy_runtime, get_active_assessment_policy, get_policy_by_id
@@ -33,6 +32,29 @@ from app.services.evidence_view import (
 from app.services.rag.retriever import retrieve_chunks
 
 settings = get_settings()
+
+
+def _is_carry_forward_compatible(
+    assessment: Assessment,
+    plan: AssessmentPlan,
+    previous_assessment: Assessment | None,
+    previous_plan: AssessmentPlan | None,
+) -> bool:
+    """Permit carry-forward only when evidence, policy, model, and execution mode are unchanged."""
+    if not previous_assessment or not previous_plan:
+        return False
+    current_fingerprint = (plan.scope_json or {}).get("fingerprint")
+    previous_fingerprint = (previous_plan.scope_json or {}).get("fingerprint")
+    return bool(
+        current_fingerprint
+        and previous_fingerprint == current_fingerprint
+        and previous_assessment.policy_id == assessment.policy_id
+        and previous_assessment.policy_version == assessment.policy_version
+        and previous_assessment.llm_provider == assessment.llm_provider
+        and previous_assessment.llm_model == assessment.llm_model
+        and previous_assessment.context_strategy == assessment.context_strategy
+        and previous_assessment.skip_stage3 == assessment.skip_stage3
+    )
 
 
 def _resolve_assessment_concurrency(assessment: Assessment) -> int:
@@ -59,6 +81,18 @@ async def run_assessment(assessment_id: int) -> None:
         result = await db.execute(select(Assessment).where(Assessment.id == assessment_id))
         assessment: Assessment | None = result.scalar_one_or_none()
         if not assessment:
+            return
+
+        plan = await db.scalar(
+            select(AssessmentPlan).where(
+                AssessmentPlan.assessment_id == assessment_id,
+                AssessmentPlan.status == "approved",
+            )
+        )
+        if not plan:
+            assessment.status = "failed"
+            assessment.error_message = "Execution blocked: an approved assessment plan is required."
+            await db.commit()
             return
 
         assessment.status = "running"
@@ -99,7 +133,46 @@ async def _run(assessment: Assessment, db: AsyncSession) -> None:
     assessment.controls_total = len(controls)
     await db.commit()
 
-    scope_doc_ids = await build_scope_document_ids(project.id, db)
+    plan = await db.scalar(select(AssessmentPlan).where(AssessmentPlan.assessment_id == assessment.id))
+    if not plan or plan.status != "approved":
+        raise RuntimeError("Execution blocked: the approved assessment plan is missing.")
+
+    frozen_documents = list((plan.scope_json or {}).get("documents") or [])
+    if not frozen_documents:
+        raise RuntimeError("Execution blocked: the approved plan has no frozen evidence scope.")
+    scope_doc_ids = [int(item["document_id"]) for item in frozen_documents]
+    scope_run_ids = [int(item["ingestion_run_id"]) for item in frozen_documents]
+    current_docs = {
+        row.id: row.file_hash
+        for row in (
+            await db.execute(select(Document).where(Document.id.in_(scope_doc_ids)))
+        ).scalars().all()
+    }
+    current_runs = {
+        row.id: row
+        for row in (
+            await db.execute(select(IngestionRun).where(IngestionRun.id.in_(scope_run_ids)))
+        ).scalars().all()
+    }
+    invalid_scope: list[int] = []
+    for item in frozen_documents:
+        document_id = int(item["document_id"])
+        run_id = int(item["ingestion_run_id"])
+        run = current_runs.get(run_id)
+        if (
+            current_docs.get(document_id) != item.get("file_hash")
+            or run is None
+            or run.document_id != document_id
+            or run.status != "complete"
+            or run.quality_status != "passed"
+            or not run.readiness_eligible
+        ):
+            invalid_scope.append(document_id)
+    if invalid_scope:
+        raise RuntimeError(
+            "Execution blocked: approved evidence changed or is no longer assessment-ready "
+            f"for document IDs {sorted(set(invalid_scope))}. Approve a new assessment plan."
+        )
     project_doc_ids_result = await db.execute(
         select(Document.id).where(
             Document.project_id == project.id,
@@ -111,7 +184,9 @@ async def _run(assessment: Assessment, db: AsyncSession) -> None:
     has_indexed_docs = bool(scope_doc_ids)
 
     # Build system context summary from the assessment scope, not just project uploads.
-    system_context = await build_system_context_from_evidence(project.id, db, scope_doc_ids)
+    system_context = await build_system_context_from_evidence(
+        project.id, db, scope_doc_ids, scope_run_ids=scope_run_ids
+    )
 
     # Get LLM provider through the shared runtime resolver so assessment and
     # helper flows read from the same model-routing layer.
@@ -127,7 +202,9 @@ async def _run(assessment: Assessment, db: AsyncSession) -> None:
         reasoning_effort=_reasoning_effort,
     )
 
-    evidence_index = await preload_evidence_index(project.id, scope_doc_ids, db)
+    evidence_index = await preload_evidence_index(
+        project.id, scope_doc_ids, db, scope_run_ids=scope_run_ids
+    )
     policy_record = None
     if assessment.policy_id:
         policy_record = await get_policy_by_id(db, assessment.policy_id)
@@ -186,13 +263,22 @@ async def _run(assessment: Assessment, db: AsyncSession) -> None:
     completed_ids = {row[0] for row in existing_result.fetchall()}
 
     # ── Carry-forward compliant findings ────────────────────────────────────
-    # When enabled (default), skip re-testing controls that were fully compliant
-    # in the most recent assessment. Copy their findings directly to save time.
+    # When explicitly enabled, reuse compliant findings only when the frozen
+    # evidence scope and assessment execution configuration are unchanged.
     from datetime import UTC
-    carry_forward_compliant = getattr(assessment, 'carry_forward_compliant', True)
+    carry_forward_compliant = getattr(assessment, 'carry_forward_compliant', False)
     carry_forward_ids: set[str] = set()
 
-    if carry_forward_compliant and prev_assessment:
+    prev_plan = None
+    if prev_assessment:
+        prev_plan = await db.scalar(
+            select(AssessmentPlan).where(AssessmentPlan.assessment_id == prev_assessment.id)
+        )
+    carry_forward_compatible = _is_carry_forward_compatible(
+        assessment, plan, prev_assessment, prev_plan
+    )
+
+    if carry_forward_compliant and prev_assessment and carry_forward_compatible:
         cf_findings_to_insert: list[ControlFinding] = []
         for ctrl in controls:
             cid = ctrl.display_id
@@ -336,6 +422,8 @@ async def _run(assessment: Assessment, db: AsyncSession) -> None:
                             query=rag_query, project_id=project.id, db=rag_db,
                             top_k=10, max_tokens=max_chunk_tokens,
                             extra_doc_ids=extra_doc_ids or None,
+                            allowed_doc_ids=scope_doc_ids,
+                            allowed_run_ids=scope_run_ids,
                         )
                 except Exception:
                     chunks_map[ctrl.display_id] = []
@@ -363,6 +451,9 @@ async def _run(assessment: Assessment, db: AsyncSession) -> None:
                 skip_stage3=skip_stage3,
                 evidence_index=evidence_index,
                 policy_runtime=policy_runtime,
+                scope_doc_ids=scope_doc_ids,
+                scope_run_ids=scope_run_ids,
+                evidence_scope_fingerprint=(plan.scope_json or {}).get("fingerprint"),
             )
 
     # Process in batches so we can check for pause between each batch
@@ -381,11 +472,43 @@ async def _run(assessment: Assessment, db: AsyncSession) -> None:
     await db.refresh(assessment)
     if assessment.status not in ("paused", "failed"):
         await build_assessment_rollup(assessment.id, db)
+        await _record_automated_examine_activities(assessment.id, db)
         assessment.status = "complete"
         assessment.error_message = None
         assessment.completed_at = datetime.now(UTC)
         assessment.progress_detail = None
         await db.commit()
+
+
+async def _record_automated_examine_activities(assessment_id: int, db: AsyncSession) -> None:
+    """Record document examination performed by the engine without claiming interviews or tests."""
+    assessment = await db.scalar(select(Assessment).where(Assessment.id == assessment_id))
+    findings = (
+        await db.execute(select(ControlFinding).where(ControlFinding.assessment_id == assessment_id))
+    ).scalars().all()
+    finding_map = {finding.control_id: finding for finding in findings}
+    activities = (
+        await db.execute(
+            select(AssessmentActivity).where(
+                AssessmentActivity.assessment_id == assessment_id,
+                AssessmentActivity.method == "EXAMINE",
+                AssessmentActivity.status == "planned",
+            )
+        )
+    ).scalars().all()
+    now = datetime.now(UTC)
+    for activity in activities:
+        finding = finding_map.get(activity.control_id)
+        if not finding:
+            continue
+        activity.status = "performed"
+        activity.result = (
+            f"ATO Bot examined the indexed evidence scope and produced a {finding.status} draft finding. "
+            "A qualified assessor must review the finding before finalization."
+        )
+        activity.evidence_refs = finding.evidence_citations or []
+        activity.performed_by = assessment.started_by if assessment else None
+        activity.performed_at = finding.tested_at or now
 
 
 async def _set_progress(assessment_id: int, detail: str) -> None:
@@ -415,13 +538,22 @@ async def _assess_control(
     skip_stage3: bool = False,
     evidence_index: dict[str, list[dict]] | None = None,
     policy_runtime: dict | None = None,
+    scope_doc_ids: list[int] | None = None,
+    scope_run_ids: list[int] | None = None,
+    evidence_scope_fingerprint: str | None = None,
 ) -> None:
     async with AsyncSessionLocal() as db:
         override_applied = None
         carried_forward = False
 
         # ── Override: Satisfied ──────────────────────────────────────────────
-        if override and override.satisfied and override.satisfied_finding_snapshot:
+        if (
+            override
+            and override.satisfied
+            and override.satisfied_finding_snapshot
+            and override.satisfied_finding_snapshot.get("evidence_scope_fingerprint")
+            == evidence_scope_fingerprint
+        ):
             snap = override.satisfied_finding_snapshot
             is_na = snap.get("status") == "not_applicable"
             prev_is_na = prev_status == "not_applicable" if prev_status else is_na
@@ -556,20 +688,28 @@ async def _assess_control(
         elif finding is None:
             rag_query = f"{control.display_id} {control.title}: {control.statement[:300]}"
             if context_strategy == "full":
-                chunks = await get_all_evidence_text(project_id, db, max_chunk_tokens)
+                chunks = await get_all_evidence_text(
+                    project_id, db, max_chunk_tokens, scope_doc_ids, scope_run_ids
+                )
             elif context_strategy == "rag":
                 chunks = await retrieve_chunks(
                     query=rag_query, project_id=project_id, db=db,
                     top_k=10, max_tokens=max_chunk_tokens,
                     extra_doc_ids=provider_doc_ids,
+                    allowed_doc_ids=scope_doc_ids,
+                    allowed_run_ids=scope_run_ids,
                 )
             else:  # hybrid
                 rag_chunks = await retrieve_chunks(
                     query=rag_query, project_id=project_id, db=db,
                     top_k=6, max_tokens=max_chunk_tokens // 2,
                     extra_doc_ids=provider_doc_ids,
+                    allowed_doc_ids=scope_doc_ids,
+                    allowed_run_ids=scope_run_ids,
                 )
-                all_chunks = await get_all_evidence_text(project_id, db, max_chunk_tokens // 2)
+                all_chunks = await get_all_evidence_text(
+                    project_id, db, max_chunk_tokens // 2, scope_doc_ids, scope_run_ids
+                )
                 seen = set()
                 chunks = []
                 for c in rag_chunks + all_chunks:
@@ -630,6 +770,8 @@ async def _assess_control(
                     top_k_per_query=4,
                     max_tokens=max_chunk_tokens,
                     extra_doc_ids=provider_doc_ids,
+                    allowed_doc_ids=scope_doc_ids,
+                    allowed_run_ids=scope_run_ids,
                 )
 
             finding = await assess_control_multistage(
@@ -762,7 +904,6 @@ async def _assess_control(
         await db.commit()
 
 async def _create_poam_entry(assessment_id: int, control_id: str, finding, db: AsyncSession) -> None:
-    from app.models.orm import POAM
 
     risk = "high" if finding.status == "non_compliant" else "medium"
     poam_id = f"POAM-{assessment_id}-{control_id.replace('-', '').replace('(', '').replace(')', '')}"

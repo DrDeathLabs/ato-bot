@@ -36,7 +36,7 @@ ATO Bot is mostly built from type 1 and type 2 flows, with type 3 guardrails aro
 
 ## 3. The Global Runtime Map
 
-The central runtime router is [runtime.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/llm/runtime.py).
+The central runtime router is [runtime.py](../backend/app/services/llm/runtime.py).
 
 It maps internal purposes to provider/model routes.
 
@@ -114,8 +114,8 @@ That pattern is one of the strongest architectural properties in the platform.
 
 ### Entry points
 
-- [pipeline.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/ingestion/pipeline.py)
-- [llm_screener.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/ingestion/llm_screener.py)
+- [pipeline.py](../backend/app/services/ingestion/pipeline.py)
+- [llm_screener.py](../backend/app/services/ingestion/llm_screener.py)
 
 ### Runtime purpose
 
@@ -167,8 +167,8 @@ This is the first point where ATO Bot moves beyond keyword search and starts usi
 
 ### Entry points
 
-- [pipeline.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/ingestion/pipeline.py)
-- [classifier.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/ingestion/classifier.py)
+- [pipeline.py](../backend/app/services/ingestion/pipeline.py)
+- [classifier.py](../backend/app/services/ingestion/classifier.py)
 
 ### Runtime purpose
 
@@ -210,7 +210,7 @@ This metadata influences:
 
 ### Entry point
 
-- [control_tagger.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/control_tagger.py)
+- [control_tagger.py](../backend/app/services/control_tagger.py)
 
 ### Runtime purpose
 
@@ -257,7 +257,7 @@ This is the system asking, "What is this document really about from a controls p
 
 ### Entry point
 
-- [procedure_categorizer.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/procedure_categorizer.py)
+- [procedure_categorizer.py](../backend/app/services/procedure_categorizer.py)
 
 ### Runtime purpose
 
@@ -297,9 +297,9 @@ This is an AI sorting clerk for the enterprise procedure library.
 
 ### Entry points
 
-- [assessment_engine.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/assessment_engine.py)
-- [assessment_pipeline.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/assessment_pipeline.py)
-- [multistage_engine.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/multistage_engine.py)
+- [assessment_engine.py](../backend/app/services/assessment_engine.py)
+- [assessment_pipeline.py](../backend/app/services/assessment_pipeline.py)
+- [multistage_engine.py](../backend/app/services/multistage_engine.py)
 
 ### Runtime purpose
 
@@ -389,7 +389,7 @@ This is the clearest example of ATO Bot using AI inside a controlled workflow ra
 
 ### Entry point
 
-- [retry_engine.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/retry_engine.py)
+- [retry_engine.py](../backend/app/services/retry_engine.py)
 
 ### Runtime purpose
 
@@ -419,8 +419,8 @@ This is a second-pass rescue loop for controls that could not be assessed cleanl
 
 ### Entry points
 
-- [assistant.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/assistant.py)
-- [assistant_service.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/assistant_service.py)
+- [assistant.py](../backend/app/api/assistant.py)
+- [assistant_service.py](../backend/app/services/assistant_service.py)
 
 ### Runtime purposes
 
@@ -471,7 +471,7 @@ The assistant can explain and recommend, but it is not the source of truth for a
 
 ### Entry point
 
-- [assistant_service.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/assistant_service.py)
+- [assistant_service.py](../backend/app/services/assistant_service.py)
 
 ### Runtime purpose
 
@@ -499,7 +499,7 @@ This lets the assistant treat screenshots, dashboards, scan results, and configu
 
 ### Entry point
 
-- [ai_assist.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/ai_assist.py)
+- [ai_assist.py](../backend/app/api/ai_assist.py)
 
 ### Runtime purpose
 
@@ -538,7 +538,7 @@ This is an analyst-writing assistant, not a decision engine.
 
 ### Entry point
 
-- [ai_assist.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/ai_assist.py)
+- [ai_assist.py](../backend/app/api/ai_assist.py)
 
 ### Runtime purpose
 
@@ -571,8 +571,8 @@ It does not change the verdict automatically.
 
 ### Entry points
 
-- [closure.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/api/closure.py)
-- [closure_service.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/closure_service.py)
+- [closure.py](../backend/app/api/closure.py)
+- [closure_service.py](../backend/app/services/closure_service.py)
 
 ### Runtime purposes used
 
@@ -635,7 +635,7 @@ It interviews, plans, writes, and then re-tests.
 
 ### Entry point
 
-- [remediation_service.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/remediation_service.py)
+- [remediation_service.py](../backend/app/services/remediation_service.py)
 
 ### Runtime purpose
 
@@ -661,7 +661,7 @@ This is the system saying, "Here is the work plan to close what the assessment f
 
 ### Entry point
 
-- [remediation_service.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/remediation_service.py)
+- [remediation_service.py](../backend/app/services/remediation_service.py)
 
 ### Runtime purpose
 
@@ -688,7 +688,7 @@ This flow tries to produce the next package of evidence that would improve the n
 
 ### Entry point
 
-- [test_dataset_generator.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/test_dataset_generator.py)
+- [test_dataset_generator.py](../backend/app/services/test_dataset_generator.py)
 
 ### Runtime purpose
 
@@ -726,7 +726,7 @@ It is one of the strongest "self-improving platform" flows because it feeds the 
 
 ### Entry point
 
-- [human_artifact_generator.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/human_artifact_generator.py)
+- [human_artifact_generator.py](../backend/app/services/human_artifact_generator.py)
 
 ### Runtime purpose
 
@@ -754,7 +754,7 @@ This is the "write a believable artifact, not a robotic crosswalk" engine.
 
 ### Entry point
 
-- [security_telemetry.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/security_telemetry.py)
+- [security_telemetry.py](../backend/app/services/security_telemetry.py)
 
 ### Runtime purpose
 
@@ -789,7 +789,7 @@ This is a translator flow: from structured security facts into a cleaner remedia
 
 ### Entry point
 
-- [system_knowledge.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/system_knowledge.py)
+- [system_knowledge.py](../backend/app/services/system_knowledge.py)
 
 ### Is it currently agentic?
 
@@ -815,7 +815,7 @@ This is a machine inference layer, but not currently a model-driven one.
 
 ### Entry point
 
-- [ssp_composer.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/ssp_composer.py)
+- [ssp_composer.py](../backend/app/services/ssp_composer.py)
 
 ### Is it currently agentic?
 
@@ -839,7 +839,7 @@ It is a major downstream consumer of AI-adjacent outputs even though the composi
 
 ### Entry point
 
-- [artifact_validation.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/artifact_validation.py)
+- [artifact_validation.py](../backend/app/services/artifact_validation.py)
 
 ### Is it currently agentic?
 
@@ -862,7 +862,7 @@ This is one of the main non-agentic quality gates used around generated evidence
 
 ### Entry point
 
-- [calibration_harness.py](/C:/Users/Ddeat/OneDrive/Documents/Claude/ATO_Bot/backend/app/services/calibration_harness.py)
+- [calibration_harness.py](../backend/app/services/calibration_harness.py)
 
 ### Is it currently agentic?
 

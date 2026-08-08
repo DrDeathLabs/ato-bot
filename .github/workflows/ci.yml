@@ -23,6 +23,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npm audit --audit-level=high
+      - run: npm run lint
       - run: npm run build
 
   backend:
@@ -39,14 +40,47 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
-      - run: python -m pip install --upgrade "pip>=26.0" "setuptools>=83.0.0" "wheel>=0.46.2"
-      - run: pip install --index-url https://download.pytorch.org/whl/cpu torch==2.9.1
-      - run: pip install -r backend/requirements-dev.txt
+      - run: python -m pip install --constraint backend/constraints.txt --upgrade "pip>=26.0" "setuptools>=83.0.0" "wheel>=0.46.2"
+      - run: pip install --constraint backend/constraints.txt --index-url https://download.pytorch.org/whl/cpu torch==2.9.1
+      - run: pip install --constraint backend/constraints.txt -r backend/requirements-dev.txt
       - run: pip-audit -r backend/requirements.txt
       - run: python -m compileall -q backend/app backend/tests
-      - run: python -m unittest discover -s backend/tests -v
+      - run: ruff check backend/app backend/tests --config backend/pyproject.toml
+      - run: pytest -q backend/tests
         env:
           PYTHONPATH: backend
+
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: atobot
+          POSTGRES_PASSWORD: atobot-ci-password
+          POSTGRES_DB: atobot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U atobot -d atobot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://atobot:atobot-ci-password@127.0.0.1:5432/atobot
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install --constraint constraints.txt -r requirements.txt
+      - run: alembic upgrade head
+      - run: alembic current
 
   compose:
     runs-on: ubuntu-latest

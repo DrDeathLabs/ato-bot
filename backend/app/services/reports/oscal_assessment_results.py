@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
 from app.models.orm import (
     Assessment,
+    AssessmentActivity,
     AssessmentChallenge,
     AssessmentEvidenceTriage,
     AssessmentRollup,
@@ -91,6 +92,13 @@ async def generate_oscal_assessment_results(assessment_id: int) -> str:
                 )
             )
         ).scalars().all()
+        activities = (
+            await db.execute(
+                select(AssessmentActivity)
+                .where(AssessmentActivity.assessment_id == assessment_id)
+                .order_by(AssessmentActivity.control_id, AssessmentActivity.method, AssessmentActivity.id)
+            )
+        ).scalars().all()
 
         document_ids = sorted({row.document_id for row in triage_rows if row.document_id})
         documents = {}
@@ -104,11 +112,14 @@ async def generate_oscal_assessment_results(assessment_id: int) -> str:
     challenge_by_control = {row.control_id: row for row in challenges}
     objectives_by_control: dict[str, list[ObjectiveDetermination]] = defaultdict(list)
     triage_by_control: dict[str, list[AssessmentEvidenceTriage]] = defaultdict(list)
+    activities_by_control: dict[str, list[AssessmentActivity]] = defaultdict(list)
 
     for row in objective_rows:
         objectives_by_control[row.control_id].append(row)
     for row in triage_rows:
         triage_by_control[row.control_id].append(row)
+    for row in activities:
+        activities_by_control[row.control_id].append(row)
 
     reviewed_controls = {
         "description": f"Controls reviewed in assessment {assessment.project_run_number} for {project.name}.",
@@ -147,6 +158,7 @@ async def generate_oscal_assessment_results(assessment_id: int) -> str:
         challenge = challenge_by_control.get(finding.control_id)
         triage = triage_by_control.get(finding.control_id, [])
         objectives = objectives_by_control.get(finding.control_id, [])
+        control_activities = activities_by_control.get(finding.control_id, [])
 
         relevant_evidence = []
         for row in triage:
@@ -170,12 +182,18 @@ async def generate_oscal_assessment_results(assessment_id: int) -> str:
                 for row in objectives[:12]
             ]
             observation_remarks.append("Objective determinations:\n" + "\n".join(objective_lines))
+        if control_activities:
+            activity_lines = [
+                f"{row.method}: {row.result or 'No recorded result.'}"
+                for row in control_activities
+            ]
+            observation_remarks.append("Recorded assessment activities:\n" + "\n".join(activity_lines))
 
         observation = {
                 "uuid": control_observation_uuid,
                 "title": f"{finding.control_id} assessment observation",
                 "description": f"{finding.control_title}",
-                "methods": ["EXAMINE"],
+                "methods": sorted({row.method for row in control_activities if row.status == "completed"}) or ["EXAMINE"],
                 "types": ["control-assessment"],
                 "collected": iso(finding.tested_at or assessment.completed_at or assessment.started_at),
                 "props": [

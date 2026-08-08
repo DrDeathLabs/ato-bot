@@ -69,6 +69,7 @@ def _control_summary(control: Control) -> dict:
         "status": control.status,
         "incorporated_into": control.incorporated_into,
         "assessment_objective_count": len(criteria),
+        "assessment_methods": [item["method"] for item in control.assessment_methods],
         "assessment_criteria_source": criteria_source,
         "baselines": _baseline_membership(control),
         "raw_baselines": _raw_baseline_membership(control),
@@ -92,6 +93,8 @@ def _control_detail(control: Control) -> dict:
         "statement": control.statement,
         "supplemental_guidance": control.supplemental_guidance,
         "assessment_criteria": criteria,
+        "assessment_procedures": control.assessment_methods,
+        "organization_defined_parameters": control.organization_defined_parameters,
         "reference_source": "NIST SP 800-53 Rev. 5 / 800-53A",
         "parent": parent,
     }

@@ -5,8 +5,6 @@ import os
 from pathlib import Path
 
 from docx import Document
-from docx.shared import Pt
-from jinja2 import Environment, FileSystemLoader
 
 from app.core.config import get_settings
 

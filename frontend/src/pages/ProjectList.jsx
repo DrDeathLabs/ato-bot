@@ -59,30 +59,30 @@ export default function ProjectList() {
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-md shadow-2xl sm:p-6">
-            <h2 className="text-lg font-bold mb-4">New Project</h2>
+          <div role="dialog" aria-modal="true" aria-labelledby="new-project-title" className="bg-white rounded-xl p-5 w-full max-w-md shadow-2xl sm:p-6">
+            <h2 id="new-project-title" className="text-lg font-bold mb-4">New Project</h2>
             <form
               onSubmit={(e) => { e.preventDefault(); createProject.mutate(form) }}
               className="space-y-4"
             >
               <div>
-                <label className="block text-sm font-medium mb-1">System Name *</label>
-                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                <label htmlFor="project-name" className="block text-sm font-medium mb-1">System Name *</label>
+                <input id="project-name" name="name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
-                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+                <label htmlFor="project-description" className="block text-sm font-medium mb-1">Description</label>
+                <textarea id="project-description" name="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={2} className="w-full border rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">System Type</label>
-                <input value={form.system_type} onChange={(e) => setForm({ ...form, system_type: e.target.value })}
+                <label htmlFor="project-system-type" className="block text-sm font-medium mb-1">System Type</label>
+                <input id="project-system-type" name="system_type" value={form.system_type} onChange={(e) => setForm({ ...form, system_type: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="e.g. Web Application, SaaS, On-premise" />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Impact Baseline *</label>
-                <select value={form.impact_baseline} onChange={(e) => setForm({ ...form, impact_baseline: e.target.value })}
+                <label htmlFor="project-impact-baseline" className="block text-sm font-medium mb-1">Impact Baseline *</label>
+                <select id="project-impact-baseline" name="impact_baseline" value={form.impact_baseline} onChange={(e) => setForm({ ...form, impact_baseline: e.target.value })}
                   className="w-full border rounded-lg px-3 py-2 text-sm">
                   <option value="low">Low (~168 controls)</option>
                   <option value="moderate">Moderate (~330 controls)</option>

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import io
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -10,7 +10,6 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import os
 from pathlib import Path
 
 from app.core.database import get_db
@@ -222,7 +221,7 @@ async def reset_report(
     if report.status in ("running", "pending"):
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot reset a report that is currently running. Cancel it first."
+            detail="Cannot reset a report that is currently running. Cancel it first."
         )
     await db.delete(report)
     await db.commit()

@@ -22,6 +22,8 @@ class Control:
     statement: str
     supplemental_guidance: str
     assessment_objectives: list[str] = field(default_factory=list)
+    assessment_methods: list[dict[str, object]] = field(default_factory=list)
+    organization_defined_parameters: list[str] = field(default_factory=list)
     # Each entry: "AC-01a.[01]: an access control policy is developed and documented"
     is_enhancement: bool = False
     parent_id: str | None = None
@@ -100,11 +102,37 @@ def _extract_leaf_objectives(part: dict, results: list[str]) -> None:
         _extract_leaf_objectives(sub, results)
 
 
+def _extract_assessment_method(part: dict) -> dict[str, object] | None:
+    method = next(
+        (str(prop.get("value") or "").upper() for prop in part.get("props", []) if prop.get("name") == "method"),
+        "",
+    )
+    if method not in {"EXAMINE", "INTERVIEW", "TEST"}:
+        return None
+    label = _get_sp800_53a_label(part)
+    objects: list[str] = []
+    for child in part.get("parts", []):
+        if child.get("name") != "assessment-objects":
+            continue
+        prose = _extract_prose(child)
+        for value in re.split(r"\n\s*\n|\r?\n", prose):
+            normalized = " ".join(value.split())
+            if normalized and normalized not in objects:
+                objects.append(normalized)
+    return {"method": method, "label": label, "objects": objects}
+
+
 def _parse_control(raw: dict, family_id: str, family_title: str,
                    is_enhancement: bool = False, parent_id: str | None = None) -> Control:
     statement = ""
     supplemental = ""
     objectives: list[str] = []
+    methods: list[dict[str, object]] = []
+    parameter_ids = sorted(set(re.findall(
+        r"\{\{\s*insert:\s*param,\s*([^}\s]+)\s*\}\}",
+        json.dumps(raw),
+        flags=re.IGNORECASE,
+    )))
 
     for part in raw.get("parts", []):
         name = part.get("name", "")
@@ -114,6 +142,10 @@ def _parse_control(raw: dict, family_id: str, family_title: str,
             supplemental = _extract_prose(part)
         elif name == "assessment-objective":
             _extract_leaf_objectives(part, objectives)
+        elif name == "assessment-method":
+            method = _extract_assessment_method(part)
+            if method:
+                methods.append(method)
 
     return Control(
         id=raw["id"],
@@ -124,6 +156,8 @@ def _parse_control(raw: dict, family_id: str, family_title: str,
         statement=statement,
         supplemental_guidance=supplemental,
         assessment_objectives=objectives,
+        assessment_methods=methods,
+        organization_defined_parameters=parameter_ids,
         is_enhancement=is_enhancement,
         parent_id=parent_id,
         status=_get_status(raw),

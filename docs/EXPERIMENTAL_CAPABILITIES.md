@@ -111,6 +111,12 @@ These components have no route or import in the current application. They are pr
 
 Their existence does not make them product capabilities. The corresponding security API groups may still support the routed Security Ops dashboard and therefore require separate analysis before any removal.
 
+## Unreachable Backend Implementations
+
+These implementations are preserved for the final disposition review but are not called by the supported runtime:
+
+- `app/services/test_dataset_generator.py::_generate_legacy_test_dataset` is the superseded synthetic-package generator. The later `generate_test_dataset` implementation is the active worker entry point. The legacy implementation must be compared for unique behavior before removal.
+
 ## Final Disposition Checklist
 
 For every entry above, the publication review must record:

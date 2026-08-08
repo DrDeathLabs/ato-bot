@@ -498,8 +498,8 @@ def _domain_pack(domain: str, cid: str, title: str, family: str, profile: Synthe
                     [record_id, "Observed workstation and web session inactivity lock tests", "Pass: access blocked until re-authentication", profile.isso, "2026-04-18"],
                 ],
                 "raw_rows": [
-                    [profile.logging, f"SecurityEvent EventID=4800 Account=ODCS\\jdoe Message='The workstation was locked.'", "Device lock activated after the configured inactivity interval."],
-                    [profile.logging, f"SecurityEvent EventID=4801 EventID=4624 Account=ODCS\\jdoe AuthenticationPackage=Negotiate", "User completed identification and authentication before access resumed."],
+                    [profile.logging, "SecurityEvent EventID=4800 Account=ODCS\\jdoe Message='The workstation was locked.'", "Device lock activated after the configured inactivity interval."],
+                    [profile.logging, "SecurityEvent EventID=4801 EventID=4624 Account=ODCS\\jdoe AuthenticationPackage=Negotiate", "User completed identification and authentication before access resumed."],
                     ["KeycloakAudit_CL", "event_type='LOGIN' reason='reauth_after_idle_timeout' client='ato-bot-ui'", "Web session required re-authentication after idle timeout."],
                 ],
             }

@@ -456,7 +456,7 @@ async def get_document_report(
     )
     if control_filter:
         # Filter units where control_ids JSON array contains the given control
-        from sqlalchemy import cast, String
+        from sqlalchemy import String
         units_query = units_query.where(
             EvidenceClassification.control_ids.cast(String).contains(control_filter)
         )
