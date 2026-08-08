@@ -1,0 +1,12 @@
+title = "ATO Bot Gitleaks configuration"
+
+[allowlist]
+description = "Exact non-secret test identifiers and public/internal catalog keys."
+regexTarget = "match"
+regexes = [
+  '''test-secret-key-with-at-least-32-characters''',
+  '''nist-sp-800-53-rev5-default''',
+  '''ca2_assessment_plan_approval''',
+  '''pl2_risk_result_record''',
+  '''pl2_approval_distribution_protection_record''',
+]
