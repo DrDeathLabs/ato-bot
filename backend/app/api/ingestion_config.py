@@ -73,6 +73,15 @@ class CorpusUpsertRequest(BaseModel):
     control_keywords: dict[str, list[str]]
 
 
+def _prepare_document_reprocess(document: Document) -> bool:
+    """Return false when a document already has active durable work."""
+    if document.parse_status in {"pending", "processing", "indexing", "parsing"}:
+        return False
+    document.parse_status = "pending"
+    document.parse_error = None
+    return True
+
+
 # ── GET all settings ──────────────────────────────────────────────────────────
 
 @router.get("")
@@ -334,17 +343,19 @@ async def reprocess_document(
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(require_admin),
 ):
-    """Trigger a new ingestion run for a document (full reprocess)."""
-    import asyncio
+    """Queue a full document reprocess on the durable ingestion worker."""
     doc = await db.get(Document, document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    from app.services.ingestion.pipeline import run_ingestion_pipeline
-    asyncio.create_task(run_ingestion_pipeline(
-        document_id=document_id,
-        triggered_by=user.get("id"),
-    ))
-    return {"ok": True, "message": f"Reprocessing started for document {document_id}"}
+    if not _prepare_document_reprocess(doc):
+        raise HTTPException(status_code=409, detail="Document is already queued or processing")
+    await db.commit()
+    return {
+        "ok": True,
+        "status": "pending",
+        "message": f"Document {document_id} queued for durable reprocessing",
+        "triggered_by": user.get("id"),
+    }
 
 
 @router.post("/resume/{run_id}")

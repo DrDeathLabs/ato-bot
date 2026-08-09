@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.database import AsyncSessionLocal
-from app.models.orm import Assessment, AssessmentPolicy, Document, Project, SystemProfile
+from app.models.orm import Assessment, AssessmentPolicy, Project, SystemProfile
 from app.services.assessment_pipeline import assess_control_with_assessor_pipeline, preload_evidence_index
 from app.services.assessment_policy import build_policy_runtime
 from app.services.closure_service import _build_project_context, _wait_for_document_index

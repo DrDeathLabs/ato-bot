@@ -11,7 +11,7 @@ import logging
 import re
 from json import JSONDecodeError
 
-import httpx
+from app.services.ingestion.http_retry import post_json_with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -117,15 +117,14 @@ async def _post_chat(
         **top_params,
     }
 
-    async with httpx.AsyncClient(timeout=timeout_secs) as client:
-        resp = await client.post(
-            f"{ollama_base_url.rstrip('/')}/api/chat",
-            headers=_build_headers(api_key, extra_headers),
-            json=body,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("message", {}).get("content", "")
+    resp = await post_json_with_retry(
+        f"{ollama_base_url.rstrip('/')}/api/chat",
+        headers=_build_headers(api_key, extra_headers),
+        payload=body,
+        timeout_secs=timeout_secs,
+    )
+    data = resp.json()
+    return data.get("message", {}).get("content", "")
 
 
 async def classify_unit(

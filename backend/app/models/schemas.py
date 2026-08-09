@@ -102,6 +102,7 @@ class ProjectCreate(BaseModel):
     description: str | None = None
     system_type: str | None = None
     impact_baseline: str = Field(default="moderate")
+    system_owner_id: int | None = None
 
     @field_validator("impact_baseline")
     @classmethod
@@ -116,6 +117,7 @@ class ProjectUpdate(BaseModel):
     description: str | None = None
     system_type: str | None = None
     impact_baseline: str | None = None
+    system_owner_id: int | None = None
 
 
 class ProjectResponse(BaseModel):
@@ -125,6 +127,7 @@ class ProjectResponse(BaseModel):
     system_type: str | None
     impact_baseline: str
     owner_id: int
+    system_owner_id: int | None = None
     created_at: datetime
     updated_at: datetime
 

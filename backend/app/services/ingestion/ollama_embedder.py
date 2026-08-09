@@ -5,6 +5,8 @@ import logging
 
 import httpx
 
+from app.services.ingestion.http_retry import post_json_with_retry
+
 logger = logging.getLogger(__name__)
 
 TARGET_DIM = 1024
@@ -47,14 +49,13 @@ async def embed_texts(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=timeout_secs) as client:
-            resp = await client.post(
-                f"{base_url.rstrip('/')}/api/embed",
-                headers=headers,
-                json=payload,
-            )
-            resp.raise_for_status()
-            data = resp.json()
+        resp = await post_json_with_retry(
+            f"{base_url.rstrip('/')}/api/embed",
+            headers=headers,
+            payload=payload,
+            timeout_secs=timeout_secs,
+        )
+        data = resp.json()
     except httpx.HTTPStatusError as exc:
         logger.error("Ollama embed HTTP error: %s %s", exc.response.status_code, exc.response.reason_phrase)
         raise OllamaEmbeddingError(

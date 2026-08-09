@@ -167,7 +167,6 @@ export default function ProjectDetail() {
     depth: 'focused',
     coverage: 'representative',
     plan_approval_note: 'I reviewed this scope, method, object, depth, and coverage plan and approve it for execution.',
-    plan_approved: false,
   })
   const [showStartModal, setShowStartModal] = useState(false)
 
@@ -179,6 +178,10 @@ export default function ProjectDetail() {
   const { data: project } = useQuery({
     queryKey: ['project', id],
     queryFn: () => api.get(`/projects/${id}`).then((r) => r.data),
+  })
+  const { data: systemOwners = [] } = useQuery({
+    queryKey: ['system-owners'],
+    queryFn: () => api.get('/users/system-owners').then((r) => r.data),
   })
   const { data: documents = [], refetch: refetchDocs } = useQuery({
     queryKey: ['documents', id],
@@ -335,6 +338,21 @@ export default function ProjectDetail() {
     },
   })
 
+  const updateProject = useMutation({
+    mutationFn: (patch) => api.patch(`/projects/${id}`, patch),
+    onSuccess: (response) => {
+      qc.setQueryData(['project', id], response.data)
+    },
+  })
+
+  const startAssessmentError = (() => {
+    const detail = startAssessment.error?.response?.data?.detail
+    if (!detail) return startAssessment.error?.message || null
+    if (typeof detail === 'string') return detail
+    if (Array.isArray(detail)) return detail.map((item) => item.msg || JSON.stringify(item)).join('; ')
+    return detail.message || JSON.stringify(detail)
+  })()
+
   const pauseAssessment = useMutation({
     mutationFn: (aId) => api.post(`/projects/${id}/assessments/${aId}/pause`),
     onSuccess: () => qc.invalidateQueries(['assessments', id]),
@@ -490,6 +508,7 @@ export default function ProjectDetail() {
     if (status === 'error') return 'border-red-200 bg-red-50 text-red-700'
     return 'border-gray-200 bg-gray-50 text-gray-600'
   }
+  const selectedSystemOwner = systemOwners.find((user) => user.id === project.system_owner_id)
 
   return (
     <div className="p-8 max-w-5xl">
@@ -605,8 +624,8 @@ export default function ProjectDetail() {
                 setStartConfig((current) => ({
                   ...current,
                   plan_title: `${project?.name || 'System'} NIST 800-53 Assessment Plan`,
-                  plan_approved: false,
                 }))
+                startAssessment.reset()
                 setShowStartModal(true)
               }}
               disabled={documents.length === 0 || documents.some(d => d.parse_status === 'processing')}
@@ -615,6 +634,35 @@ export default function ProjectDetail() {
               <Play size={16} />
               Start Assessment
             </button>
+          </div>
+          <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-800">FISMA accountability</p>
+                <p className="mt-1 text-sm text-gray-700">Assign the system owner accountable for the system boundary and control-owner review.</p>
+              </div>
+              <div className="w-full sm:w-64">
+                <label htmlFor="project-system-owner" className="sr-only">FISMA System Owner</label>
+                <select
+                  id="project-system-owner"
+                  value={project.system_owner_id ?? ''}
+                  onChange={(e) => updateProject.mutate({ system_owner_id: e.target.value ? Number(e.target.value) : null })}
+                  disabled={updateProject.isPending}
+                  className="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-800 disabled:opacity-60"
+                >
+                  <option value="">Not assigned yet</option>
+                  {systemOwners.map((user) => (
+                    <option key={user.id} value={user.id}>{user.username}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500">
+              {selectedSystemOwner
+                ? `${selectedSystemOwner.username} is assigned as the FISMA System Owner.`
+                : 'No FISMA System Owner is assigned. An assessor or administrator can assign an active system_owner account.'}
+            </p>
+            {updateProject.isError && <p role="alert" className="mt-2 text-xs text-red-700">Unable to save the system owner assignment.</p>}
           </div>
           <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50/70 p-4">
             <div className="flex items-start justify-between gap-3">
@@ -1344,7 +1392,7 @@ export default function ProjectDetail() {
                   <label className="block text-sm font-medium mb-1">Plan title</label>
                   <input
                     value={startConfig.plan_title}
-                    onChange={(e) => setStartConfig({ ...startConfig, plan_title: e.target.value, plan_approved: false })}
+                    onChange={(e) => setStartConfig({ ...startConfig, plan_title: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                   />
                 </div>
@@ -1353,7 +1401,7 @@ export default function ProjectDetail() {
                   <textarea
                     rows={3}
                     value={startConfig.scope_statement}
-                    onChange={(e) => setStartConfig({ ...startConfig, scope_statement: e.target.value, plan_approved: false })}
+                    onChange={(e) => setStartConfig({ ...startConfig, scope_statement: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                   />
                 </div>
@@ -1362,7 +1410,7 @@ export default function ProjectDetail() {
                     <label className="block text-sm font-medium mb-1">Depth</label>
                     <select
                       value={startConfig.depth}
-                      onChange={(e) => setStartConfig({ ...startConfig, depth: e.target.value, plan_approved: false })}
+                      onChange={(e) => setStartConfig({ ...startConfig, depth: e.target.value })}
                       className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                     >
                       <option value="basic">Basic</option>
@@ -1374,7 +1422,7 @@ export default function ProjectDetail() {
                     <label className="block text-sm font-medium mb-1">Coverage</label>
                     <select
                       value={startConfig.coverage}
-                      onChange={(e) => setStartConfig({ ...startConfig, coverage: e.target.value, plan_approved: false })}
+                      onChange={(e) => setStartConfig({ ...startConfig, coverage: e.target.value })}
                       className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                     >
                       <option value="representative">Representative</option>
@@ -1401,7 +1449,6 @@ export default function ProjectDetail() {
                     onChange={(e) => setStartConfig({
                       ...startConfig,
                       assessment_objects: e.target.value.split('\n').map((value) => value.trim()).filter(Boolean),
-                      plan_approved: false,
                     })}
                     className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                   />
@@ -1411,21 +1458,13 @@ export default function ProjectDetail() {
                   <textarea
                     rows={2}
                     value={startConfig.plan_approval_note}
-                    onChange={(e) => setStartConfig({ ...startConfig, plan_approval_note: e.target.value, plan_approved: false })}
+                    onChange={(e) => setStartConfig({ ...startConfig, plan_approval_note: e.target.value })}
                     className="w-full border rounded-lg px-3 py-2 text-sm bg-white"
                   />
                 </div>
-                <label className="flex items-start gap-3 rounded-lg border border-blue-200 bg-white p-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={startConfig.plan_approved}
-                    onChange={(e) => setStartConfig({ ...startConfig, plan_approved: e.target.checked })}
-                    className="mt-0.5"
-                  />
-                  <span className="text-sm text-gray-700">
-                    I approve this assessment plan for execution and understand that findings remain draft until all required human activities, reviews, dissent resolutions, and approvals are complete.
-                  </span>
-                </label>
+                <p className="text-xs text-blue-800">
+                  Starting records your approval of this plan. Findings remain draft until required human activities, reviews, dissent resolutions, and approvals are complete.
+                </p>
               </section>
 
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Runtime configuration</p>
@@ -1543,13 +1582,20 @@ export default function ProjectDetail() {
                 </div>
               </label>
 
+              {startAssessmentError && (
+                <div role="alert" className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                  <span>{startAssessmentError}</span>
+                </div>
+              )}
+
               <div className="flex gap-3 pt-2">
                 <button onClick={() => setShowStartModal(false)}
                   className="flex-1 border rounded-lg py-2 text-sm hover:bg-gray-50">Cancel</button>
-                <button onClick={() => startAssessment.mutate(startConfig)}
-                  disabled={startAssessment.isPending || !startConfig.plan_approved}
+                <button onClick={() => startAssessment.mutate({ ...startConfig, plan_approved: true })}
+                  disabled={startAssessment.isPending}
                   className="flex-1 bg-green-600 text-white rounded-lg py-2 text-sm hover:bg-green-700 disabled:opacity-50">
-                  {startAssessment.isPending ? 'Starting...' : 'Start'}
+                  {startAssessment.isPending ? 'Starting...' : 'Approve plan and start'}
                 </button>
               </div>
             </div>

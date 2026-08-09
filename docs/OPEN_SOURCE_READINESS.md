@@ -22,6 +22,15 @@ Verified locally in the current cleanup branch:
 - Reproducible Python dependency constraints are consumed by Docker and CI.
 - Existing local runtime data has not been migrated or modified.
 
+Latest live release-candidate smoke verification (2026-08-09):
+
+- ATO Bot Docker backend, worker, frontend, PostgreSQL, and Redis are healthy.
+- The explicit FISMA System Owner migration is applied at Alembic revision `a1b2c3d4e5f6`.
+- Latest live browser E2E run passed 3 executable tests: authentication, invalid credentials, project lifecycle, and system-owner assignment/visibility. The assessment-navigation scenario was skipped because no `E2E_PROJECT_ID` and `E2E_ASSESSMENT_ID` were supplied; that scenario was validated separately against the live assessment workspace when those IDs were available.
+- The system-owner E2E now sends authenticated cleanup for its temporary account and removes its temporary project. Local disposable test accounts are deactivated after verification; existing named E2E review projects are left untouched.
+- The E2E run found and fixed an optional-owner serialization regression before the final green rerun.
+- Only ATO Bot services were rebuilt or restarted; other Docker applications were not changed.
+
 ## Closed P0/P1 Foundations
 
 - Apache-2.0 `LICENSE`, `NOTICE`, DCO, Contributor Covenant, support and security policies.

@@ -15,7 +15,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.rbac import require_assessor, require_project_assessment_access, require_reviewer, require_viewer
+from app.core.rbac import (
+    Role,
+    require_assessor,
+    require_project_assessment_access,
+    require_reviewer,
+    require_system_owner,
+    require_viewer,
+)
 from app.models.orm import ArtifactApproval, ControlClosureSession, Document
 from app.services import closure_service
 from app.core.config import get_settings
@@ -27,6 +34,29 @@ router = APIRouter(
 )
 
 settings = get_settings()
+
+
+_APPROVAL_STEP_ROLES: dict[str, set[str]] = {
+    "control_owner": {
+        Role.SYSTEM_OWNER,
+        Role.REVIEWER,
+        Role.ASSESSOR,
+        Role.SECURITY_OFFICER,
+        Role.SYSTEM_ADMIN,
+    },
+    "reviewer": {
+        Role.REVIEWER,
+        Role.ASSESSOR,
+        Role.SECURITY_OFFICER,
+        Role.SYSTEM_ADMIN,
+    },
+    "isso": {Role.SECURITY_OFFICER, Role.SYSTEM_ADMIN},
+}
+
+
+def _can_advance_artifact_approval(step_role: str, user_role: str) -> bool:
+    """Require the signed-in user to hold the role represented by the current step."""
+    return user_role in _APPROVAL_STEP_ROLES.get(step_role, {Role.SYSTEM_ADMIN})
 
 
 # ── Request / Response Schemas ─────────────────────────────────────────────────
@@ -297,10 +327,27 @@ async def advance_approval(
     approval_id: int,
     body: ApprovalActionRequest,
     db: AsyncSession = Depends(get_db),
-    _: dict = Depends(require_assessor),
+    current_user: dict = Depends(require_system_owner),
 ) -> dict:
     if body.action not in ("approve", "reject"):
         raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+    approval = await db.scalar(
+        select(ArtifactApproval).where(
+            ArtifactApproval.id == approval_id,
+            ArtifactApproval.session_id == session_id,
+        )
+    )
+    if not approval:
+        raise HTTPException(status_code=404, detail="Artifact approval not found")
+    chain = list(approval.approval_chain or [])
+    if approval.current_step >= len(chain):
+        raise HTTPException(status_code=409, detail="All approval steps are already complete")
+    step_role = str(chain[approval.current_step].get("role") or "")
+    if not _can_advance_artifact_approval(step_role, current_user["role"]):
+        raise HTTPException(
+            status_code=403,
+            detail=f"The current approval step requires the {step_role or 'designated'} role",
+        )
     try:
         return await closure_service.advance_approval(
             approval_id=approval_id,
@@ -309,6 +356,7 @@ async def advance_approval(
             approver_org=body.approver_org,
             action=body.action,
             comments=body.comments,
+            actor=current_user,
             db=db,
         )
     except ValueError as exc:

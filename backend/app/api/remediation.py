@@ -384,7 +384,9 @@ async def download_report(
 ):
     """Download the report — guide as Word or Excel, artifacts as Word."""
     from app.services.remediation_service import (
-        _build_guide_xlsx, _guide_sections_to_markdown, _md_to_docx
+        _build_artifact_package_docx,
+        _build_guide_docx,
+        _build_guide_xlsx,
     )
 
     result = await db.execute(
@@ -412,18 +414,11 @@ async def download_report(
             filename = f"Remediation_Action_Tracker_assessment_{assessment_id}.xlsx"
             media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         else:
-            guide_md = _guide_sections_to_markdown(sections, summary, system_name)
-            file_bytes = _md_to_docx("Remediation Guide", system_name, guide_md, date_str)
+            file_bytes = _build_guide_docx(sections, summary, system_name, date_str)
             filename = f"Remediation_Guide_assessment_{assessment_id}.docx"
             media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     else:
-        # Artifacts: produce a combined Word doc of all families
-        all_md = "\n\n---\n\n".join(
-            f"# {a.get('title', a['family'])}\n\n"
-            f"**Controls addressed:** {', '.join(a.get('controls_addressed', []))}\n\n"
-            for a in content.get("artifacts", [])
-        )
-        file_bytes = _md_to_docx("Remediation Artifact Package", "", all_md, date_str)
+        file_bytes = _build_artifact_package_docx(content, date_str)
         filename = f"Remediation_Artifacts_assessment_{assessment_id}.docx"
         media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 

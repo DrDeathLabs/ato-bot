@@ -5222,7 +5222,7 @@ function SelectedControlPanel({
     <div className="fixed inset-0 z-40">
       <button
         type="button"
-        aria-label="Close control review drawer"
+        aria-label="Dismiss control review drawer"
         onClick={onClose}
         className="absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]"
       />
@@ -5269,6 +5269,7 @@ function SelectedControlPanel({
               </div>
               <button
                 type="button"
+                aria-label="Close control review drawer"
                 onClick={onClose}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-700"
               >
@@ -6289,28 +6290,39 @@ export default function AssessmentView() {
   }
 
   const commitAssessmentNav = useCallback((updates) => {
-    const next = new URLSearchParams(searchParams)
-    const nextTab = updates.tab ?? activeTab
-    const nextFindingsView = updates.findingsView ?? findingsView
-    const nextAdvancedView = updates.advancedView ?? advancedView
-    const nextControl = Object.prototype.hasOwnProperty.call(updates, 'control')
-      ? updates.control
-      : selectedControlId
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      const currentTab = ['overview', 'findings', 'evidence', 'outputs', 'advanced'].includes(current.get('tab'))
+        ? current.get('tab')
+        : 'overview'
+      const currentFindingsView = ['family', 'flat'].includes(current.get('findingsView'))
+        ? current.get('findingsView')
+        : 'flat'
+      const currentAdvancedView = ['delta', 'dissents', 'workbench', 'review', 'system'].includes(current.get('advancedView'))
+        ? current.get('advancedView')
+        : 'delta'
+      const nextTab = updates.tab ?? currentTab
+      const nextFindingsView = updates.findingsView ?? currentFindingsView
+      const nextAdvancedView = updates.advancedView ?? currentAdvancedView
+      const nextControl = Object.prototype.hasOwnProperty.call(updates, 'control')
+        ? updates.control
+        : current.get('control')
 
-    if (nextTab && nextTab !== 'overview') next.set('tab', nextTab)
-    else next.delete('tab')
+      if (nextTab && nextTab !== 'overview') next.set('tab', nextTab)
+      else next.delete('tab')
 
-    if (nextFindingsView && nextFindingsView !== 'family') next.set('findingsView', nextFindingsView)
-    else next.delete('findingsView')
+      if (nextFindingsView && nextFindingsView !== 'family') next.set('findingsView', nextFindingsView)
+      else next.delete('findingsView')
 
-    if (nextAdvancedView && nextAdvancedView !== 'delta') next.set('advancedView', nextAdvancedView)
-    else next.delete('advancedView')
+      if (nextAdvancedView && nextAdvancedView !== 'delta') next.set('advancedView', nextAdvancedView)
+      else next.delete('advancedView')
 
-    if (nextControl) next.set('control', nextControl)
-    else next.delete('control')
+      if (nextControl) next.set('control', nextControl)
+      else next.delete('control')
 
-    setSearchParams(next)
-  }, [searchParams, setSearchParams, activeTab, findingsView, advancedView, selectedControlId])
+      return next
+    })
+  }, [setSearchParams])
 
   const setActiveTab = useCallback((tab) => {
     commitAssessmentNav({ tab, control: tab === 'findings' ? selectedControlId : null })

@@ -1,5 +1,5 @@
-* @atobot-maintainers
+* @drdeathlabs
 
-/backend/app/core/ @atobot-maintainers
-/backend/alembic/ @atobot-maintainers
-/.github/ @atobot-maintainers
+/backend/app/core/ @drdeathlabs
+/backend/alembic/ @drdeathlabs
+/.github/ @drdeathlabs

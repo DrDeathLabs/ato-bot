@@ -35,17 +35,23 @@ outputs/
 tmp/
 *.log
 *.tar
+*.sql
+*.dump
+*.bak
 collector_payload.json
 backend/collector_payload.json
 
 # Generated binary deliverables and local screenshots
 /*.docx
 docs/*.docx
+!docs/ATO_Bot_Technical_White_Paper_2026-07-06.docx
 docs/*.pptx
 docs/app_screens_*/
 
 # Private review material and presentation working notes
 docs/*Assessment_Capability_Review*
+docs/ATO_BOT_LIVE_E2E_*
+docs/OPEN_SOURCE_CHANGE_REVIEW_*
 docs/*presentation_handoff*
 docs/*Speaker_Notes*
 

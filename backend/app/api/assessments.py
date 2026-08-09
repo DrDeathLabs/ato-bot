@@ -162,7 +162,10 @@ async def start_assessment(
         raise HTTPException(
             status_code=409,
             detail={
-                "message": "Assessment evidence is not ready. Reprocess degraded documents before execution.",
+                "message": (
+                    "Assessment evidence is not ready. Wait for pending documents to finish "
+                    "and reprocess any failed or degraded documents before execution."
+                ),
                 **evidence_readiness,
             },
         )
@@ -208,6 +211,8 @@ async def start_assessment(
             "document_count": evidence_readiness["eligible_document_count"],
             "documents": evidence_readiness["eligible_documents"],
             "fingerprint": evidence_readiness["scope_fingerprint"],
+            "legacy_unverified_documents": evidence_readiness["legacy_unverified_documents"],
+            "legacy_unverified_document_count": evidence_readiness["legacy_unverified_document_count"],
         },
         control_selection_json={
             "baseline": project.impact_baseline,

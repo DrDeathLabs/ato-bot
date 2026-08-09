@@ -11,7 +11,7 @@ import logging
 import re
 from functools import lru_cache
 
-import httpx
+from app.services.ingestion.http_retry import post_json_with_retry
 
 from app.services.controls.catalog import load_catalog
 
@@ -239,15 +239,14 @@ async def screen_batch(
         headers.update(extra_headers)
 
     try:
-        async with httpx.AsyncClient(timeout=timeout_secs) as client:
-            resp = await client.post(
-                f"{ollama_base_url.rstrip('/')}/api/chat",
-                headers=headers,
-                json=body,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            raw = data.get("message", {}).get("content", "")
+        resp = await post_json_with_retry(
+            f"{ollama_base_url.rstrip('/')}/api/chat",
+            headers=headers,
+            payload=body,
+            timeout_secs=timeout_secs,
+        )
+        data = resp.json()
+        raw = data.get("message", {}).get("content", "")
     except Exception as exc:
         logger.warning("Ollama screening call failed: %s", type(exc).__name__)
         return _fallback_results(items)

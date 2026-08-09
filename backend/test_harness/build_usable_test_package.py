@@ -260,7 +260,7 @@ def build_readme(assessment_id: int, timestamp: str, families: list[dict[str, An
             "## Build Metadata",
             "",
             f"- Assessment ID: {assessment_id}",
-            f"- Package policy: `latest_per_family_realism`",
+            "- Package policy: `latest_per_family_realism`",
             f"- Generated at (UTC): {timestamp}",
         ]
     ) + "\n"

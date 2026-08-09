@@ -1279,16 +1279,7 @@ async def _generate_guide(
     # Word guide document
     await _set_report_progress(report_id, "Building Word remediation guide…")
     try:
-        guide_nodes = _guide_sections_to_doc_nodes(guide_sections, summary, system_name)
-        from docx import Document as DocxDocument
-        guide_doc = DocxDocument()
-        _build_docx_cover(guide_doc, "Remediation Guide", system_name, date_str,
-                          "CONTROLLED UNCLASSIFIED INFORMATION")
-        _render_sections_to_doc(guide_doc, guide_nodes)
-        import io as _io
-        _buf = _io.BytesIO()
-        guide_doc.save(_buf)
-        guide_docx_bytes = _buf.getvalue()
+        guide_docx_bytes = _build_guide_docx(guide_sections, summary, system_name, date_str)
         doc_id = await _save_document(
             file_bytes=guide_docx_bytes,
             filename=f"Remediation_Guide_{system_name.replace(' ', '_')}.docx",
@@ -1397,6 +1388,65 @@ def _guide_sections_to_doc_nodes(sections: list[dict], summary: dict, system_nam
             nodes.append({"type": "divider"})
 
     return nodes
+
+
+def _build_guide_docx(
+    sections: list[dict],
+    summary: dict,
+    system_name: str,
+    generated_date: str,
+) -> bytes:
+    """Build the same remediation guide used for stored and on-demand downloads."""
+    from docx import Document as DocxDocument
+
+    document = DocxDocument()
+    _build_docx_cover(
+        document,
+        "Remediation Guide",
+        system_name,
+        generated_date,
+        "CONTROLLED UNCLASSIFIED INFORMATION",
+    )
+    _render_sections_to_doc(document, _guide_sections_to_doc_nodes(sections, summary, system_name))
+    buffer = io.BytesIO()
+    document.save(buffer)
+    return buffer.getvalue()
+
+
+def _build_artifact_package_docx(content: dict, generated_date: str) -> bytes:
+    """Build a readable index for an assessment-wide generated artifact package."""
+    from docx import Document as DocxDocument
+
+    artifacts = list(content.get("artifacts") or [])
+    document = DocxDocument()
+    _build_docx_cover(
+        document,
+        "Remediation Artifact Package",
+        str(content.get("system_name") or "System"),
+        generated_date,
+        "CONTROLLED UNCLASSIFIED INFORMATION",
+    )
+    nodes: list[dict] = [
+        {
+            "type": "paragraph",
+            "text": f"This package indexes {len(artifacts)} generated remediation artifact groups.",
+        }
+    ]
+    for artifact in artifacts:
+        family = str(artifact.get("family") or "Artifact")
+        title = str(artifact.get("title") or family)
+        controls = ", ".join(str(item) for item in artifact.get("controls_addressed") or [])
+        nodes.extend(
+            [
+                {"type": "heading", "level": 2, "text": title},
+                {"type": "paragraph", "text": f"Family: {family}"},
+                {"type": "paragraph", "text": f"Controls addressed: {controls or 'See generated documents'}"},
+            ]
+        )
+    _render_sections_to_doc(document, nodes)
+    buffer = io.BytesIO()
+    document.save(buffer)
+    return buffer.getvalue()
 
 
 # ── Artifact Generation ────────────────────────────────────────────────────────

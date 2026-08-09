@@ -28,6 +28,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: sigstore/cosign-installer@v3
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/ato-bot-${{ matrix.name }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+            type=sha,format=long
       - id: build
         uses: docker/build-push-action@v6
         with:
@@ -35,9 +44,10 @@ jobs:
           push: true
           provenance: mode=max
           sbom: true
-          tags: ghcr.io/${{ github.repository_owner }}/atobot-${{ matrix.name }}:${{ github.ref_name }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
       - name: Sign immutable image digest
         env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/atobot-${{ matrix.name }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/ato-bot-${{ matrix.name }}
           DIGEST: ${{ steps.build.outputs.digest }}
         run: cosign sign --yes "${IMAGE}@${DIGEST}"

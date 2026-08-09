@@ -86,10 +86,14 @@ class Project(Base):
     system_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
     impact_baseline: Mapped[str] = mapped_column(String(16), nullable=False, default="moderate")  # low|moderate|high
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    system_owner_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    owner: Mapped["User"] = relationship()
+    owner: Mapped["User"] = relationship(foreign_keys=[owner_id])
+    system_owner: Mapped["User | None"] = relationship(foreign_keys=[system_owner_id])
     documents: Mapped[list["Document"]] = relationship(
         back_populates="project", cascade="all, delete-orphan",
         foreign_keys="Document.project_id",

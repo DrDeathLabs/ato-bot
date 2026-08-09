@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.rbac import get_current_user, require_admin
+from app.core.rbac import get_current_user, require_admin, require_assessor
 from app.core.security import hash_password
 from app.models.orm import RefreshToken, User
 from app.models.schemas import UserCreate, UserPasswordReset, UserResponse, UserUpdate
@@ -54,6 +54,20 @@ async def get_me(
     """Any authenticated user can fetch their own profile."""
     result = await db.execute(select(User).where(User.id == current_user["id"]))
     return result.scalar_one()
+
+
+@router.get("/system-owners", response_model=list[UserResponse])
+async def list_system_owners(
+    db: AsyncSession = Depends(get_db),
+    _: dict = Depends(require_assessor),
+) -> list[UserResponse]:
+    """Return active FISMA system-owner accounts for project assignment."""
+    result = await db.execute(
+        select(User)
+        .where(User.role == "system_owner", User.is_active.is_(True))
+        .order_by(User.username)
+    )
+    return result.scalars().all()
 
 
 @router.get("/{user_id}", response_model=UserResponse)

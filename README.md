@@ -19,6 +19,10 @@ ATO Bot produces assessment evidence analysis and draft control determinations. 
 Feature maturity and deprecation status are documented in [docs/FEATURE_STATUS.md](docs/FEATURE_STATUS.md).
 Known limitations and the security boundary are documented in [docs/LIMITATIONS.md](docs/LIMITATIONS.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
+## Documentation
+
+Start with the [documentation index](docs/README.md) and [User Guide](docs/USER_GUIDE.md). The release documentation also includes the [Assessment Workflow](docs/ASSESSMENT_WORKFLOW.md), [Ingestion Guide](docs/INGESTION_GUIDE.md), [Remediation and Outputs](docs/REMEDIATION_AND_OUTPUTS.md), [Administration Guide](docs/ADMINISTRATION.md), [Deployment Guide](docs/DEPLOYMENT.md), [Architecture](docs/ARCHITECTURE.md), and [Verified E2E Workflows](docs/E2E_VERIFIED_WORKFLOWS.md).
+
 ## Quick Start
 
 ### Prerequisites
@@ -50,6 +54,24 @@ docker compose exec backend python seed_admin.py
 ```
 
 Open `http://127.0.0.1:3001` and sign in with the account created by the seed command.
+
+## GitHub Container Registry
+
+Release tags publish signed application images to GitHub Container Registry:
+
+- `ghcr.io/drdeathlabs/ato-bot-backend:<tag>` — backend API, worker, and migration image
+- `ghcr.io/drdeathlabs/ato-bot-frontend:<tag>` — frontend and nginx image
+
+The database and Redis services remain separate dependencies. After a release is published, pull the application images with the GHCR Compose override:
+
+```powershell
+$env:ATOBOT_IMAGE_TAG = "latest"
+docker login ghcr.io
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
+```
+
+Use a version tag such as `v1.0.0` instead of `latest` for a reproducible deployment. The GHCR workflow runs only for version tags and publishes SBOM, provenance, and a Cosign signature for each application image.
 
 ### Verify
 

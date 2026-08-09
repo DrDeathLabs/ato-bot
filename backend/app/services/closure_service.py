@@ -1780,6 +1780,7 @@ async def advance_approval(
     approver_org: str,
     action: str,          # "approve" | "reject"
     comments: str,
+    actor: dict | None,
     db: AsyncSession,
 ) -> dict:
     """Record an approver's decision and advance the chain."""
@@ -1801,6 +1802,10 @@ async def advance_approval(
     step["status"] = "approved" if action == "approve" else "rejected"
     step["comments"] = comments
     step["completed_at"] = _now_iso()
+    if actor:
+        step["authenticated_user_id"] = actor.get("id")
+        step["authenticated_username"] = actor.get("username")
+        step["authenticated_user_role"] = actor.get("role")
     chain[current_step] = step
 
     if action == "reject":

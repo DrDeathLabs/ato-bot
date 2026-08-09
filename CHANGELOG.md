@@ -8,6 +8,7 @@ Semantic Versioning and the Keep a Changelog format.
 ### Added
 
 - Open-source governance, security, and release-readiness controls.
+- Explicit FISMA System Owner assignment and project visibility support.
 
 ### Security
 

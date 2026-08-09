@@ -14,21 +14,29 @@ export default function ProjectList() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [showCreate, setShowCreate] = useState(false)
-  const [form, setForm] = useState({ name: '', description: '', system_type: '', impact_baseline: 'moderate' })
+  const [form, setForm] = useState({ name: '', description: '', system_type: '', impact_baseline: 'moderate', system_owner_id: '' })
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: () => api.get('/projects').then((r) => r.data),
   })
+  const { data: systemOwners = [] } = useQuery({
+    queryKey: ['system-owners'],
+    queryFn: () => api.get('/users/system-owners').then((r) => r.data),
+  })
+  const systemOwnerNames = Object.fromEntries(systemOwners.map((user) => [user.id, user.username]))
 
   const [confirmDelete, setConfirmDelete] = useState(null) // project to delete
 
   const createProject = useMutation({
-    mutationFn: (data) => api.post('/projects', data),
+    mutationFn: (data) => api.post('/projects', {
+      ...data,
+      system_owner_id: data.system_owner_id ? Number(data.system_owner_id) : null,
+    }),
     onSuccess: () => {
       qc.invalidateQueries(['projects'])
       setShowCreate(false)
-      setForm({ name: '', description: '', system_type: '', impact_baseline: 'moderate' })
+      setForm({ name: '', description: '', system_type: '', impact_baseline: 'moderate', system_owner_id: '' })
     },
   })
 
@@ -88,6 +96,22 @@ export default function ProjectList() {
                   <option value="moderate">Moderate (~330 controls)</option>
                   <option value="high">High (~580 controls)</option>
                 </select>
+              </div>
+              <div>
+                <label htmlFor="project-system-owner" className="block text-sm font-medium mb-1">FISMA System Owner</label>
+                <select
+                  id="project-system-owner"
+                  name="system_owner_id"
+                  value={form.system_owner_id}
+                  onChange={(e) => setForm({ ...form, system_owner_id: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                >
+                  <option value="">Not assigned yet</option>
+                  {systemOwners.map((user) => (
+                    <option key={user.id} value={user.id}>{user.username}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Assign the accountable system owner now, or assign one from the project page later.</p>
               </div>
               <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                 <button type="button" onClick={() => setShowCreate(false)}
@@ -155,6 +179,9 @@ export default function ProjectList() {
                   </span>
                 </div>
                 {p.description && <p className="text-gray-500 text-sm mt-1">{p.description}</p>}
+                <p className="text-gray-500 text-xs mt-1">
+                  FISMA System Owner: <span className="font-medium text-gray-700">{systemOwnerNames[p.system_owner_id] || 'Not assigned'}</span>
+                </p>
                 <p className="text-gray-400 text-xs mt-1">
                   {p.system_type && `${p.system_type} · `}
                   Created {new Date(p.created_at).toLocaleDateString()}
