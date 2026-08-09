@@ -2,7 +2,7 @@
 
 ## Current Status
 
-ATO Bot remains private and is **not approved for public release**. Apache-2.0 licensing, repository governance, dynamic feature status, hardened JWT validation, Alembic-owned schema changes, a one-shot migration service, frontend route splitting, and baseline CI/security workflows are now present.
+ATO Bot is source-available under Business Source License 1.1. Repository governance, dynamic feature status, hardened JWT validation, Alembic-owned schema changes, a one-shot migration service, frontend route splitting, and baseline CI/security workflows are now present.
 
 Verified locally in the current cleanup branch:
 
@@ -33,7 +33,7 @@ Latest live release-candidate smoke verification (2026-08-09):
 
 ## Closed P0/P1 Foundations
 
-- Apache-2.0 `LICENSE`, `NOTICE`, DCO, support and security policies.
+- Business Source License 1.1 `LICENSE`, `NOTICE`, DCO, support and security policies.
 - Explicit Git allowlist posture through `.gitignore`, `.dockerignore`, and staged-file review requirements.
 - `PyJWT[crypto]` tokens with issuer, audience, subject, type, issued-at, identifier, expiry, and approved-algorithm validation.
 - Alembic ownership of schema changes; application startup performs no DDL.

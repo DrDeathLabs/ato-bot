@@ -37,7 +37,7 @@ Do not submit real evidence documents, generated assessment packages, runtime co
 ## Developer Certificate of Origin
 
 Contributions must include a `Signed-off-by` line certifying that the contributor
-has the right to submit the change under the Apache-2.0 license. Create signed-off
+has the right to submit the change under the Business Source License 1.1. Create signed-off
 commits with:
 
 ```powershell

@@ -93,4 +93,11 @@ Uploaded evidence, generated artifacts, model prompts, database exports, `.env` 
 
 ## License
 
-Apache-2.0. See [LICENSE](LICENSE), [NOTICE](NOTICE), [SECURITY.md](SECURITY.md), and [CONTRIBUTING.md](CONTRIBUTING.md). Use of NIST names and resources does not imply NIST endorsement.
+ATO Bot is currently source-available under the Business Source License 1.1.
+The license permits the stated internal, government, nonprofit, research,
+evaluation, development, testing, and personal uses, while restricting hosted
+services, resale, and commercial third-party assessment services. Each version
+converts to the MIT License four years after its first public distribution.
+See [LICENSE](LICENSE), [COMMERCIAL.md](COMMERCIAL.md), [NOTICE](NOTICE),
+[SECURITY.md](SECURITY.md), and [CONTRIBUTING.md](CONTRIBUTING.md). Use of NIST
+names and resources does not imply NIST endorsement.
