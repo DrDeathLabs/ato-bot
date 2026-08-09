@@ -33,7 +33,7 @@ Latest live release-candidate smoke verification (2026-08-09):
 
 ## Closed P0/P1 Foundations
 
-- Apache-2.0 `LICENSE`, `NOTICE`, DCO, Contributor Covenant, support and security policies.
+- Apache-2.0 `LICENSE`, `NOTICE`, DCO, support and security policies.
 - Explicit Git allowlist posture through `.gitignore`, `.dockerignore`, and staged-file review requirements.
 - `PyJWT[crypto]` tokens with issuer, audience, subject, type, issued-at, identifier, expiry, and approved-algorithm validation.
 - Alembic ownership of schema changes; application startup performs no DDL.
