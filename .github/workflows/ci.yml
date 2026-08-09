@@ -90,6 +90,7 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements.txt
+      - run: pip install --constraint constraints.txt --index-url https://download.pytorch.org/whl/cpu torch==2.9.1
       - run: pip install --constraint constraints.txt -r requirements.txt
       - run: alembic upgrade head
       - run: alembic current
