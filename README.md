@@ -1,110 +1,96 @@
 # ATO Bot
 
-ATO Bot is a human-in-the-loop NIST SP 800-53 assessment workbench. It ingests security documentation, creates traceable evidence units, evaluates assessment objectives, applies deterministic adjudication policy, supports assessor review and remediation, and produces report and OSCAL-oriented outputs.
+ATO Bot is a human-in-the-loop NIST SP 800-53 assessment platform. It takes a system owner and assessor from project setup and evidence preparation through objective evaluation, control review, remediation planning, and report production. Model-driven analysis is bounded by evidence provenance, assessment policy, deterministic rollup rules, and human review.
 
-## Important Scope
+![ATO Bot assessment workspace](docs/assets/assessment-overview.png)
 
-ATO Bot produces assessment evidence analysis and draft control determinations. It does **not** replace a qualified assessor, perform every NIST SP 800-53A interview or technical test, or make an authorization decision. Final findings require human validation, appropriate testing, and approval under the adopting organization's assessment process.
+## What It Does
 
-## Supported Core
+The supported workflow is:
 
-- Project, system-profile, common-control, policy, and procedure workspaces
-- Staged document ingestion with provenance, classification, evidence units, and embeddings
-- Low, Moderate, and High NIST SP 800-53 Rev. 5 baseline support
-- Objective-level evidence routing, model reasoning, contradiction review, and code-governed rollup
-- Human finding review, notes, overrides, dissent handling, remediation guidance, and draft artifacts
-- Word, Excel, JSON, SSP, SAR, POA&M, and OSCAL-oriented outputs
-- RBAC, audit logging, MFA support, runtime configuration, and security posture views
+1. Create a project and describe the system boundary.
+2. Assign the FISMA System Owner and configure inherited/common controls.
+3. Upload project, common-control, policy, and procedure evidence.
+4. Review parsing, classification, evidence units, provenance, duplicates, and readiness.
+5. Create and approve an assessment plan with scope, methods, objects, depth, and coverage.
+6. Run objective-level evidence analysis and deterministic control adjudication.
+7. Review findings, citations, contradictions, confidence, dissent, and assessment activities.
+8. Use remediation guidance, POA&M workflow, generated drafts, and report exports.
 
-Feature maturity and deprecation status are documented in [docs/FEATURE_STATUS.md](docs/FEATURE_STATUS.md).
-Known limitations and the security boundary are documented in [docs/LIMITATIONS.md](docs/LIMITATIONS.md) and [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
+ATO Bot is not an autonomous assessor, an authorization authority, or a substitute for required interviews and technical tests. A qualified assessor remains responsible for assessment judgment, evidence acceptance, approvals, risk decisions, and the final authorization package.
 
-## Documentation
+## Capability Status
 
-Start with the [documentation index](docs/README.md) and [User Guide](docs/USER_GUIDE.md). The release documentation also includes the [Assessment Workflow](docs/ASSESSMENT_WORKFLOW.md), [Ingestion Guide](docs/INGESTION_GUIDE.md), [Remediation and Outputs](docs/REMEDIATION_AND_OUTPUTS.md), [Administration Guide](docs/ADMINISTRATION.md), [Deployment Guide](docs/DEPLOYMENT.md), [Architecture](docs/ARCHITECTURE.md), and [Verified E2E Workflows](docs/E2E_VERIFIED_WORKFLOWS.md).
+Supported capabilities include project and system-profile management, evidence libraries, NIST SP 800-53 baseline assessment, objective reasoning, deterministic policy rollups, human review, remediation guidance, draft artifacts, audit logging, RBAC, and report/OSCAL-oriented outputs. Beta and experimental capabilities are explicitly tracked in [FEATURE_STATUS.md](docs/FEATURE_STATUS.md) and [EXPERIMENTAL_CAPABILITIES.md](docs/EXPERIMENTAL_CAPABILITIES.md). Known limitations are in [LIMITATIONS.md](docs/LIMITATIONS.md).
 
-## Quick Start
+## Start Here
 
-### Prerequisites
+| Audience | Start with | Then read |
+| --- | --- | --- |
+| New user | [User Guide](docs/USER_GUIDE.md) | [Installation](docs/INSTALLATION.md) |
+| Assessor or reviewer | [Assessment Operations](docs/ASSESSMENT_OPERATIONS.md) | [Assessment Workflow](docs/ASSESSMENT_WORKFLOW.md) |
+| FISMA System Owner or control owner | [User Guide](docs/USER_GUIDE.md) | [Remediation and Outputs](docs/REMEDIATION_AND_OUTPUTS.md) |
+| Administrator | [Administration](docs/ADMINISTRATION.md) | [Production](docs/PRODUCTION.md) |
+| Operator | [Installation](docs/INSTALLATION.md) | [Troubleshooting](docs/TROUBLESHOOTING.md) |
+| Developer | [Development](docs/DEVELOPMENT.md) | [Testing](docs/TESTING.md) |
+| Security or release reviewer | [Threat Model](docs/THREAT_MODEL.md) | [Open Source Readiness](docs/OPEN_SOURCE_READINESS.md) |
 
-- Docker Desktop with Docker Compose
-- At least one configured model provider: an Ollama-compatible endpoint, Anthropic, or AWS Bedrock
-- Sufficient memory and storage for the selected model and document corpus
+The full audience map and route inventory are in [docs/README.md](docs/README.md).
 
-### Configure
+## Install With GHCR
+
+Prerequisites: Docker Desktop or Docker Engine with Compose v2, a PostgreSQL/Redis-capable host, persistent storage, and a configured model provider. Use a pinned release tag rather than `latest`:
 
 ```powershell
 Copy-Item .env.example .env
 Copy-Item backend/.env.example backend/.env
+# Set strong values for every CHANGE_ME entry and configure one model provider.
+$env:ATOBOT_IMAGE_TAG = "v0.1.6"
+docker login ghcr.io
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+docker compose ps
 ```
 
-Replace every `CHANGE_ME` value. Generate a strong application secret, for example:
+Open `http://127.0.0.1:3001`, then create an administrator using the documented seed or administrator workflow. See [Installation](docs/INSTALLATION.md) for environment details and health validation.
+
+## Install From Source
 
 ```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-The public Compose configuration binds the UI to `127.0.0.1` by default. Change `FRONTEND_BIND_ADDRESS` only when remote access is intentional and protected by host firewall and network controls.
-
-### Run
-
-```powershell
+Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
 docker compose up --build -d
 docker compose exec backend python seed_admin.py
 ```
 
-Open `http://127.0.0.1:3001` and sign in with the account created by the seed command.
+The one-shot `migrate` service runs Alembic before the API and worker start. Never expose PostgreSQL or Redis directly to an untrusted network. For TLS, reverse proxy, backups, monitoring, and upgrades, use [Production](docs/PRODUCTION.md).
 
-## GitHub Container Registry
-
-Release tags publish signed application images to GitHub Container Registry:
-
-- `ghcr.io/drdeathlabs/ato-bot-backend:<tag>` — backend API, worker, and migration image
-- `ghcr.io/drdeathlabs/ato-bot-frontend:<tag>` — frontend and nginx image
-
-The database and Redis services remain separate dependencies. After a release is published, pull the application images with the GHCR Compose override:
+## Developer Quick Start
 
 ```powershell
-$env:ATOBOT_IMAGE_TAG = "latest"
-docker login ghcr.io
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
-```
-
-Use a version tag such as `v1.0.0` instead of `latest` for a reproducible deployment. The GHCR workflow runs only for version tags and publishes SBOM, provenance, and a Cosign signature for each application image.
-
-### Verify
-
-```powershell
-docker compose ps
 python -m venv backend/.venv
 backend/.venv/Scripts/python -m pip install --constraint backend/constraints.txt -r backend/requirements-dev.txt
-backend/.venv/Scripts/python -m pytest -q backend/tests
 Set-Location frontend
 npm ci
-npm audit --audit-level=high
 npm run lint
 npm run build
 ```
 
-`backend/constraints.txt` is generated from the supported Linux build and pins runtime and development dependencies. Update it deliberately when dependencies change, then rerun both dependency audits and image builds.
+Run the service stack with Docker for the closest integration environment. Backend tests, frontend checks, migration checks, and Playwright workflows are described in [Testing](docs/TESTING.md).
 
-## Architecture
+## Project Structure
 
-- React and Vite frontend served by unprivileged nginx
-- FastAPI web service and a separate background worker
-- PostgreSQL with pgvector for application state and vector retrieval
-- Redis for coordination, caching, and job state
-- Pluggable Ollama-compatible, Anthropic, and AWS Bedrock model runtimes
+- `backend/`: FastAPI API, worker, migrations, services, tests, uploads, and generated outputs.
+- `frontend/`: React/Vite application, routes, components, and Playwright tests.
+- `docs/`: operator, assessor, architecture, security, and release documentation.
+- `docker/`: database and deployment support files.
+- `docker-compose.yml`: source-build deployment.
+- `docker-compose.ghcr.yml`: pinned GHCR application-image override.
 
-Detailed architecture and assessment-flow documentation is under [`docs/`](docs/).
-Database upgrades are owned by Alembic and are run by the one-shot `migrate` Compose service before the web service and worker start. See [docs/UPGRADING.md](docs/UPGRADING.md).
+## Security Boundary
 
-## Security
-
-Never commit `.env`, uploaded evidence, generated reports, database exports, collector payloads, or model credentials. See [SECURITY.md](SECURITY.md) for vulnerability reporting and [CONTRIBUTING.md](CONTRIBUTING.md) for development checks.
+Uploaded evidence, generated artifacts, model prompts, database exports, `.env` files, and runtime credentials are deployment data, not source-controlled examples. Do not commit them. ATO Bot does not guarantee that generated text is correct, complete, current, or eligible evidence; every final determination must be reviewed under the adopting organization's governance process.
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and
-[NOTICE](NOTICE). Use of NIST names and resources does not imply NIST endorsement.
+Apache-2.0. See [LICENSE](LICENSE), [NOTICE](NOTICE), [SECURITY.md](SECURITY.md), and [CONTRIBUTING.md](CONTRIBUTING.md). Use of NIST names and resources does not imply NIST endorsement.

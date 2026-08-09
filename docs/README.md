@@ -1,40 +1,93 @@
 # ATO Bot Documentation
 
-ATO Bot is a human-in-the-loop NIST SP 800-53 assessment workbench. The documentation is organized for three audiences:
+ATO Bot is a human-in-the-loop NIST SP 800-53 assessment platform. These docs describe the supported product boundary, how to operate it, and where human assessment authority remains mandatory.
 
-- Operators and assessors who need to run an assessment.
-- Administrators who need to configure users, models, policy, and deployment.
-- Developers and reviewers who need the architecture, data flow, and release boundary.
+## New Users
 
-## Start Here
+- [README](../README.md) - product purpose, installation choices, limits, and repository map.
+- [Installation](INSTALLATION.md) - GHCR, source-build, configuration, and first health check.
+- [User Guide](USER_GUIDE.md) - role-based walkthrough from first login through outputs.
 
-1. [User Guide](USER_GUIDE.md) - day-to-day use from project creation through reporting.
-2. [Assessment Workflow](ASSESSMENT_WORKFLOW.md) - how a full assessment is scoped, executed, reviewed, and finalized.
-3. [Ingestion Guide](INGESTION_GUIDE.md) - how uploaded documents become assessment-ready evidence.
-4. [Remediation and Outputs](REMEDIATION_AND_OUTPUTS.md) - how findings become closure guidance, artifacts, and reports.
+## Assessors and Reviewers
+
+- [Assessment Operations](ASSESSMENT_OPERATIONS.md) - how to use ATO Bot inside a qualified 800-53A assessment.
+- [Assessment Workflow](ASSESSMENT_WORKFLOW.md) - plan, run, review, finalize, and reconcile.
+- [Ingestion Guide](INGESTION_GUIDE.md) - evidence preparation and readiness.
+- [Remediation and Outputs](REMEDIATION_AND_OUTPUTS.md) - closure guidance, artifacts, POA&M, and reports.
+
+## System Owners and Control Owners
+
+- [User Guide](USER_GUIDE.md) - project boundary, FISMA System Owner, libraries, review, and next actions.
+- [Remediation and Outputs](REMEDIATION_AND_OUTPUTS.md) - gap closure and control-owner deliverables.
+- [Limitations](LIMITATIONS.md) - what ATO Bot cannot establish on its own.
+
+## Administrators
+
+- [Administration](ADMINISTRATION.md) - users, roles, ownership, policy, prompts, runtime, and audit.
+- [Production](PRODUCTION.md) - network, secrets, models, storage, monitoring, and operations.
+- [Feature Status](FEATURE_STATUS.md) - supported, beta, experimental, deprecated, and disabled states.
+
+## Operators
+
+- [Installation](INSTALLATION.md)
+- [Production](PRODUCTION.md)
+- [Troubleshooting](TROUBLESHOOTING.md)
+- [Backup and Restore](BACKUP_AND_RESTORE.md)
+- [Upgrading](UPGRADING.md)
+
+## Developers
+
+- [Development](DEVELOPMENT.md) - repository layout, local workflow, generated data, and secrets.
+- [Testing](TESTING.md) - backend, frontend, Playwright, migrations, scans, and release checks.
+- [Architecture](ARCHITECTURE.md) - runtime components, data model, and trust boundaries.
+
+## Security and Release Reviewers
+
+- [Threat Model](THREAT_MODEL.md)
+- [Open Source Readiness](OPEN_SOURCE_READINESS.md)
+- [Open Source Change Review](OPEN_SOURCE_CHANGE_REVIEW_2026-08-08.md)
+- [Live E2E Assessor Test](ATO_BOT_LIVE_E2E_ASSESSOR_TEST_2026-08-08.md)
+- [Limitations](LIMITATIONS.md)
+- [Experimental Capabilities](EXPERIMENTAL_CAPABILITIES.md)
 
 ## Technical References
 
-- [Architecture](ARCHITECTURE.md) - current runtime components, data model, and trust boundaries.
-- [Administration](ADMINISTRATION.md) - users, roles, system ownership, runtime, policy, and audit operations.
-- [Deployment](DEPLOYMENT.md) - local Docker, GHCR images, upgrades, backups, and health checks.
-- [Verified E2E Workflows](E2E_VERIFIED_WORKFLOWS.md) - what has been exercised in the live development stack and what requires additional release validation.
-- [Feature Status](FEATURE_STATUS.md) - supported, beta, experimental, and deprecated capability status.
-- [Limitations](LIMITATIONS.md) - the assessment boundary and known constraints.
-- [Threat Model](THREAT_MODEL.md) - security assumptions and trust boundaries.
-- [Upgrading](UPGRADING.md) - the short upgrade procedure.
-- [Agentic Flows](atobot_agentic_flows_2026-05-11.md) - detailed model-driven workflow reference.
-- [Ingestion and Pre-Assessment Flow](atobot_ingestion_and_pre_assessment_flow_2026-03-24.md) - exhaustive pipeline reference.
-- [Assessment Policy System](assessment_policy_system_spec.md) - policy buckets, thresholds, overrides, and versioning.
+- [Technical White Paper](ATO_Bot_Technical_White_Paper_2026-07-06.docx)
+- [Agentic Flows](atobot_agentic_flows_2026-05-11.md)
+- [Ingestion and Pre-Assessment Flow](atobot_ingestion_and_pre_assessment_flow_2026-03-24.md)
+- [Assessment Policy System](assessment_policy_system_spec.md)
+- [Adjudication Engine Specification](adjudication_engine_spec.md)
+- [Deployment](DEPLOYMENT.md)
+- [Verified E2E Workflows](E2E_VERIFIED_WORKFLOWS.md)
 
-## White Paper
+## Route and Capability Map
 
-The formatted technical white paper is the long-form system reference:
+| Route or surface | Audience | Capability status | Primary documentation |
+| --- | --- | --- | --- |
+| `/login` | Everyone | Supported | [User Guide](USER_GUIDE.md) |
+| `/projects` | Assessors, owners | Supported | [User Guide](USER_GUIDE.md) |
+| `/projects/:id` | Assessors, owners | Supported | [User Guide](USER_GUIDE.md) |
+| `/projects/:id/assessments/:assessmentId` | Assessors, reviewers | Supported | [Assessment Operations](ASSESSMENT_OPERATIONS.md) |
+| `/common-controls` | Admins, assessors | Supported | [Administration](ADMINISTRATION.md) |
+| `/enterprise-policies` | Admins, assessors | Supported | [Administration](ADMINISTRATION.md) |
+| `/enterprise-procedures` | Admins, assessors | Supported | [Administration](ADMINISTRATION.md) |
+| `/control-catalog` | Assessors, reviewers | Supported | [Assessment Workflow](ASSESSMENT_WORKFLOW.md) |
+| `/assessment-policy` | Admins, assessment leads | Supported | [Administration](ADMINISTRATION.md) |
+| `/projects/:id/ssp-workbench` | Assessors, system owners | Supported with review | [User Guide](USER_GUIDE.md) |
+| `/projects/:id/architecture-tools` | Assessors, system owners | Beta | [Feature Status](FEATURE_STATUS.md) |
+| `/projects/:id/calibration` | Developers, model reviewers | Beta | [Testing](TESTING.md) |
+| `/projects/:id/test-dataset` | Developers, model reviewers | Beta | [Testing](TESTING.md) |
+| `/users` | Administrators | Supported | [Administration](ADMINISTRATION.md) |
+| `/admin/dashboard` | Security administrators | Supported | [Administration](ADMINISTRATION.md) |
+| `/admin/prompts` | Runtime administrators | Supported with change control | [Administration](ADMINISTRATION.md) |
+| `/admin/ai-runtime` | Runtime administrators | Supported with change control | [Production](PRODUCTION.md) |
+| `/projects/:id/audit-log` | Reviewers, admins | Supported | [Administration](ADMINISTRATION.md) |
+| `/security/audit-log` | Security administrators | Supported | [Administration](ADMINISTRATION.md) |
+| `/projects/:id/integrations` | Operators | Experimental, disabled by default | [Experimental Capabilities](EXPERIMENTAL_CAPABILITIES.md) |
+| `/projects/:id/cato-dashboard` | Operators | Experimental, disabled by default | [Experimental Capabilities](EXPERIMENTAL_CAPABILITIES.md) |
+| `/dashboard` | Legacy users | Deprecated redirect | [Feature Status](FEATURE_STATUS.md) |
+| `/admin/ingestion-config` | Legacy users | Deprecated redirect | [Feature Status](FEATURE_STATUS.md) |
 
-`ATO_Bot_Technical_White_Paper_2026-07-06.docx`
+## Documentation Boundary
 
-The release source includes this named white paper as an intentional documentation artifact. Other generated binary deliverables remain outside the normal source allowlist.
-
-## Product Boundary
-
-ATO Bot produces evidence analysis and draft control determinations. It does not replace a qualified assessor, perform every required interview or technical test, or make an authorization decision. Final findings must be reviewed, supported by appropriate assessment activities, and approved under the adopting organization's process.
+The docs intentionally do not claim autonomous authorization, automatic interviews, automatic technical testing, or production-ready cATO. Date-stamped handoffs, presentations, and historical reviews remain available as references but are not the primary operator path.
