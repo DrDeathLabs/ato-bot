@@ -210,7 +210,7 @@ Prerequisites: Docker Desktop or Docker Engine with Compose v2, persistent stora
 Copy-Item .env.example .env
 Copy-Item backend/.env.example backend/.env
 # Set strong values for every CHANGE_ME entry and configure one model provider.
-$env:ATOBOT_IMAGE_TAG = "v0.1.8"
+$env:ATOBOT_IMAGE_TAG = "v0.1.0"
 docker login ghcr.io
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d

@@ -5,7 +5,7 @@ Use immutable release tags and a tested restore path. Do not upgrade an active a
 ## Version-Pinned Upgrade
 
 ```powershell
-$env:ATOBOT_IMAGE_TAG = "v0.1.6"
+$env:ATOBOT_IMAGE_TAG = "v0.1.0"
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml run --rm migrate
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d

@@ -37,7 +37,7 @@ Use the version tag shown in the GitHub release. The examples below intentionall
 Set-Location ato-bot
 Copy-Item .env.example .env
 Copy-Item backend/.env.example backend/.env
-$env:ATOBOT_IMAGE_TAG = "v0.1.6"
+$env:ATOBOT_IMAGE_TAG = "v0.1.0"
 docker login ghcr.io
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml config --quiet
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
@@ -46,8 +46,8 @@ docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
 
 Images:
 
-- `ghcr.io/drdeathlabs/ato-bot-backend:v0.1.6`
-- `ghcr.io/drdeathlabs/ato-bot-frontend:v0.1.6`
+- `ghcr.io/drdeathlabs/ato-bot-backend:v0.1.0`
+- `ghcr.io/drdeathlabs/ato-bot-frontend:v0.1.0`
 
 PostgreSQL and Redis remain local Compose dependencies. The release workflow publishes SBOM/provenance and signed application images when configured.
 
