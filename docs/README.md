@@ -34,6 +34,7 @@ ATO Bot is a human-in-the-loop NIST SP 800-53 assessment platform. These docs de
 - [Troubleshooting](TROUBLESHOOTING.md)
 - [Backup and Restore](BACKUP_AND_RESTORE.md)
 - [Upgrading](UPGRADING.md)
+- [Installation Audit](INSTALLATION_AUDIT_2026-08-11.md)
 
 ## Developers
 
@@ -90,4 +91,4 @@ ATO Bot is a human-in-the-loop NIST SP 800-53 assessment platform. These docs de
 
 ## Documentation Boundary
 
-The docs intentionally do not claim autonomous authorization, automatic interviews, automatic technical testing, or production-ready cATO. Date-stamped handoffs, presentations, and historical reviews remain available as references but are not the primary operator path.
+The docs intentionally do not claim autonomous authorization, automatic interviews, automatic technical testing, or production-ready cATO. In supported workflows, operational observability means application health, job state, audit activity, configuration changes, and processing status. It does not mean continuous authorization telemetry. Date-stamped handoffs, presentations, and historical reviews remain available as references but are not the primary operator path.

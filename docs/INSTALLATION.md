@@ -15,34 +15,43 @@ This guide installs the development or self-hosted ATO Bot stack. It assumes Doc
 ```powershell
 git clone https://github.com/DrDeathLabs/ato-bot.git
 Set-Location ato-bot
+git checkout v0.1.0
 Copy-Item .env.example .env
 Copy-Item backend/.env.example backend/.env
 ```
 
-Set strong values for `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `SECRET_KEY`, and the selected provider. Do not leave `CHANGE_ME`, example API keys, or localhost model settings that do not match the deployment network.
+Set strong values for `POSTGRES_PASSWORD`, `REDIS_PASSWORD`, and `SECRET_KEY`. Do not leave `CHANGE_ME` or example API keys in either environment file. Configure a model provider before ingestion or assessment; login, project setup, and basic health checks do not make model calls.
 
 ```powershell
 docker compose config --quiet
 docker compose up --build -d
-docker compose ps
+docker compose ps --all
+docker compose exec backend python seed_admin.py
 ```
 
-The `migrate` service runs `alembic upgrade head` and must exit successfully before the backend and worker start. Create the first administrator using the supported seed/administrator procedure exposed by the image, then open `http://127.0.0.1:3001`.
+The seed command prompts for the administrator password. It defaults to username `admin` and email `admin@atobot.local`; pass a different username and email as positional arguments when needed, for example `docker compose exec backend python seed_admin.py tutorial-admin tutorial-admin@atobot.local`.
+
+The `migrate` service runs `alembic upgrade head` and must exit with code 0 before the backend and worker start. `docker compose ps --all` is intentional: the migration service is expected to be stopped after a successful run, while `postgres`, `redis`, `backend`, `worker`, and `frontend` remain running.
 
 ## GHCR Installation
 
-Use the version tag shown in the GitHub release. The examples below intentionally avoid `latest` for reproducibility.
+The commands below use the public `v0.1.0` release and intentionally avoid `latest` for reproducibility. If you already cloned the repository, start at `Set-Location`.
 
 ```powershell
+git clone https://github.com/DrDeathLabs/ato-bot.git
 Set-Location ato-bot
+git checkout v0.1.0
 Copy-Item .env.example .env
 Copy-Item backend/.env.example backend/.env
 $env:ATOBOT_IMAGE_TAG = "v0.1.0"
-docker login ghcr.io
+# The packages are public; authenticate only if GHCR requests it or rate-limits anonymous pulls.
+# docker login ghcr.io
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml config --quiet
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml build postgres
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull migrate backend worker frontend redis
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml ps --all
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml exec backend python seed_admin.py
 ```
 
 PostgreSQL is intentionally built from the repository's pinned local image definition; the backend, migration, worker, and frontend images are pulled from GHCR.
@@ -56,20 +65,23 @@ PostgreSQL and Redis remain local Compose dependencies. The release workflow pub
 
 ## Environment Configuration
 
-Root `.env` controls Compose values such as project name, database/Redis passwords, frontend bind address, and experimental feature flags. `backend/.env` controls application, JWT, database, Redis, file storage, model runtime, assessment, lockout, and CORS values. Use the example files as the complete key list.
+Root `.env` controls Compose values such as project name, database/Redis passwords, frontend bind address, and experimental feature flags. `backend/.env` controls application, JWT, database, Redis, file storage, model runtime, assessment, lockout, and CORS values. Compose replaces the container database and Redis URLs with the internal service names; the `localhost` values in `backend/.env.example` are for non-Compose/local process use and are not used by the Compose services. Use the example files as the complete key list.
+
+When Ollama runs on the host instead of in Docker Desktop, set `OLLAMA_BASE_URL=http://host.docker.internal:11434` in `backend/.env` so the backend and worker can reach it. On Linux, use a routable host address or add an explicit host-gateway mapping in a local Compose override. Anthropic and Bedrock credentials are read by the backend and worker containers from `backend/.env`.
 
 The safe default is `FRONTEND_BIND_ADDRESS=127.0.0.1`. Bind to a LAN address only when host firewall rules, TLS/reverse proxy, authentication, and network trust are deliberate.
 
 ## Health Validation
 
 ```powershell
-docker compose ps
+docker compose ps --all
 Invoke-WebRequest http://127.0.0.1:3001/ -UseBasicParsing
+Invoke-WebRequest http://127.0.0.1:8000/health -UseBasicParsing
 docker compose exec backend python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health').read().decode())"
 docker compose logs --tail=100 migrate backend worker frontend
 ```
 
-Confirm `migrate` exited with code 0, backend/worker/frontend are healthy, and the UI can log in. Test a small synthetic project before importing a large evidence corpus.
+Confirm `migrate` exited with code 0, PostgreSQL/Redis/backend/frontend are healthy, the worker is running, and the UI can log in. Test a small synthetic project before importing a large evidence corpus. A model provider is required before ingestion, evidence analysis, or assessment execution.
 
 ## Common Installation Failures
 
@@ -78,4 +90,4 @@ Confirm `migrate` exited with code 0, backend/worker/frontend are healthy, and t
 - **Frontend opens but login fails:** inspect backend health/logs, confirm the proxy URL, clear stale browser storage, and check account lockout.
 - **Worker stays unhealthy:** verify Redis, model provider reachability, disk permissions, and backend health.
 - **Model calls fail:** configure a provider reachable from the backend/worker container, not only from the host browser.
-- **GHCR pull denied:** authenticate to GHCR and confirm the package visibility/tag.
+- **GHCR pull denied:** authenticate to GHCR and confirm the package visibility/tag. Public packages normally pull anonymously.

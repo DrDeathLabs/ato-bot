@@ -5,11 +5,15 @@ ATO Bot is distributed as a Docker Compose application. The supported developmen
 ## Local Build
 
 ```powershell
+git clone https://github.com/DrDeathLabs/ato-bot.git
+Set-Location ato-bot
+git checkout v0.1.0
 Copy-Item .env.example .env
 Copy-Item backend/.env.example backend/.env
+docker compose config --quiet
 docker compose up --build -d
 docker compose exec backend python seed_admin.py
-docker compose ps
+docker compose ps --all
 ```
 
 Replace every `CHANGE_ME` value before starting the stack. The default frontend bind is `127.0.0.1:3001`.
@@ -24,12 +28,21 @@ Release tags publish:
 The backend image is reused for the migration and worker services. PostgreSQL and Redis remain separate services.
 
 ```powershell
+git clone https://github.com/DrDeathLabs/ato-bot.git
+Set-Location ato-bot
+git checkout v0.1.0
 $env:ATOBOT_IMAGE_NAMESPACE = "drdeathlabs"
 $env:ATOBOT_IMAGE_TAG = "v0.1.0"
-docker login ghcr.io
+# The packages are public; authenticate only if GHCR requests it or rate-limits anonymous pulls.
+# docker login ghcr.io
+Copy-Item .env.example .env
+Copy-Item backend/.env.example backend/.env
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml config --quiet
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml build postgres
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull migrate backend worker frontend redis
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml ps --all
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml exec backend python seed_admin.py
 ```
 
 PostgreSQL is intentionally built from the repository's pinned local image definition; the backend, migration, worker, and frontend images are pulled from GHCR.
@@ -54,7 +67,7 @@ Never treat a migration failure as a reason to start the backend anyway. Restore
 ## Health and Troubleshooting
 
 ```powershell
-docker compose ps
+docker compose ps --all
 docker compose logs --tail=200 backend
 docker compose logs --tail=200 worker
 docker compose logs --tail=200 frontend

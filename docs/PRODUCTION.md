@@ -33,9 +33,11 @@ Back up PostgreSQL, `backend/uploads`, and `backend/outputs` together. Monitor s
 ## Operational Checklist
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
-docker compose ps
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml config --quiet
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml build postgres
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull migrate backend worker frontend redis
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml ps --all
 docker compose logs --tail=100 migrate backend worker frontend
 ```
 

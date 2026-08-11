@@ -204,28 +204,37 @@ The full documentation map and route inventory are in [docs/README.md](docs/READ
 
 ## Install With GHCR
 
-Prerequisites: Docker Desktop or Docker Engine with Compose v2, persistent storage, and a configured model provider. Use a pinned release tag rather than `latest`:
+Prerequisites: Docker Desktop or Docker Engine with Compose v2 and persistent storage. Configure a model provider before ingestion or assessment; the stack can be installed and logged into before a provider is configured. Use a pinned release tag rather than `latest`:
 
 ```powershell
+git clone https://github.com/DrDeathLabs/ato-bot.git
+Set-Location ato-bot
+git checkout v0.1.0
 Copy-Item .env.example .env
 Copy-Item backend/.env.example backend/.env
-# Set strong values for every CHANGE_ME entry and configure one model provider.
+# Set strong values for POSTGRES_PASSWORD, REDIS_PASSWORD, and SECRET_KEY.
 $env:ATOBOT_IMAGE_TAG = "v0.1.0"
-docker login ghcr.io
+# The packages are public; run docker login ghcr.io only if GHCR requests it.
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml build postgres
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull migrate backend worker frontend redis
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
-docker compose ps
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml ps --all
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml exec backend python seed_admin.py
 ```
 
-Open `http://127.0.0.1:3001`, then create an administrator using the documented administrator workflow. See [Installation](docs/INSTALLATION.md) for environment details and health validation.
+The seed command prompts for the administrator password. Open `http://127.0.0.1:3001` after the migration service exits successfully and the remaining services are healthy. See [Installation](docs/INSTALLATION.md) for environment details and health validation.
 
 ## Install From Source
 
 ```powershell
+git clone https://github.com/DrDeathLabs/ato-bot.git
+Set-Location ato-bot
+git checkout v0.1.0
 Copy-Item .env.example .env
 Copy-Item backend/.env.example backend/.env
+docker compose config --quiet
 docker compose up --build -d
+docker compose ps --all
 docker compose exec backend python seed_admin.py
 ```
 
