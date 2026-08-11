@@ -24,9 +24,9 @@ Beta features are available for evaluation but require stronger automated tests 
 
 - cATO dashboard
 - External integration accounts and connector synchronization
-- Continuous telemetry and drift rollups derived from connector scaffolding
+- Optional security-posture snapshots and drift rollups derived from connector scaffolding
 
-The current connector implementation includes dry-run behavior and explicitly does not implement every live provider API. The backend registry at `GET /api/meta/features` is authoritative. These routes and frontend navigation remain disabled unless `ENABLE_EXPERIMENTAL_CATO=true` is configured on the backend.
+The current connector implementation includes dry-run behavior and explicitly does not implement every live provider API. The backend registry at `GET /api/meta/features` is authoritative. These routes and frontend navigation remain disabled unless `ENABLE_EXPERIMENTAL_CATO=true` is configured on the backend. The internal `continuous_telemetry` key is retained for compatibility with this disabled subsystem; it does not describe supported ATO Bot assessment telemetry.
 
 See `EXPERIMENTAL_CAPABILITIES.md` for the preservation and eventual disposition inventory. No experimental capability is part of the supported-feature claim.
 

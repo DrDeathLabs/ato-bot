@@ -41,7 +41,7 @@ From the codebase, ATO Bot currently spans these functional domains:
 - SSP composition and OSCAL export
 - AI assistant conversations with contextual attachments
 - system knowledge extraction from evidence
-- integration and telemetry scaffolding for continuous ATO / cATO use cases
+- optional security-posture integration scaffolding; disabled by default and outside the supported assessment boundary
 - internal security dashboarding for the product itself
 
 This makes the system broader than a document generator. It is closer to a compliance operations platform with an AI-centered evidence graph.
@@ -92,7 +92,7 @@ The backend is split across:
 - `api/` for route handlers
 - `core/` for config, DB, security, RBAC, and rate limiting
 - `models/` for ORM and schemas
-- `services/` for ingestion, assessment, AI, reporting, telemetry, and orchestration
+- `services/` for ingestion, assessment, AI, reporting, operational observability, and orchestration
 
 ### Data and AI dependencies
 
@@ -125,13 +125,13 @@ The worker entrypoint in [backend/start_worker.py](../backend/start_worker.py) w
 - React SPA handles authentication, navigation, workbenches, document operations, and reporting UI.
 
 2. API/application server
-- FastAPI exposes project, document, assessment, AI assistant, SSP, telemetry, and admin APIs.
+- FastAPI exposes project, document, assessment, AI assistant, SSP, operational-observability, and admin APIs.
 
 3. Background worker
 - Pulls pending jobs from the database and processes ingestion, assessments, remediation reports, and test datasets.
 
 4. Database
-- PostgreSQL stores users, projects, documents, assessments, findings, evidence units, vector embeddings, policy state, assistant conversations, system knowledge, telemetry, and exports.
+- PostgreSQL stores users, projects, documents, assessments, findings, evidence units, vector embeddings, policy state, assistant conversations, system knowledge, operational-observability records, and exports.
 
 5. Vector store
 - `pgvector` is used inside PostgreSQL for semantic search over evidence embeddings.
@@ -153,7 +153,7 @@ The system is best described as:
 - backed by a staged evidence-processing pipeline
 - with deterministic adjudication around model outputs
 - plus human review surfaces
-- plus export and operational telemetry layers
+- plus export and operational-observability layers
 
 It is not a pure agent product and not a pure document store.
 
@@ -219,7 +219,9 @@ The ORM in [backend/app/models/orm.py](../backend/app/models/orm.py) shows the c
 - `ArtifactValidationResult`
 - `PackageViabilityRun`
 
-### Integrations and telemetry
+### Optional security-posture data objects
+
+The following ORM objects belong to the disabled-by-default integration and security-posture subsystem. The names are retained for source compatibility; they are not part of the supported assessment evidence model and do not represent cATO authorization telemetry.
 
 - `IntegrationAccount`
 - `IntegrationRun`
@@ -357,15 +359,15 @@ Relevant APIs:
 
 This is one of the clearest investor-facing features because it turns unstructured compliance evidence into a reviewable architecture model.
 
-### 6.8 Continuous ATO / telemetry direction
+### 6.8 Optional security-posture integration scaffolding
 
-The integration and cATO-oriented surfaces show a clear expansion path:
+The codebase retains an isolated, disabled-by-default subsystem for optional security-posture integrations. This is not part of the supported assessment workflow and should not be described as cATO or continuous authorization capability.
 
 - connector catalog
 - integration accounts
 - sync runs
-- posture rollups
-- drift tracking
+- posture snapshots
+- drift records
 - verification checks
 - app-native security posture
 
@@ -502,7 +504,7 @@ That said, the self-security service also reflects that hardening is still a wor
 
 ### Internal self-security feature
 
-One notable feature is that ATO Bot can evaluate aspects of its own security posture through the cATO and app-security layers.
+ATO Bot also contains application-security and audit views that summarize the health of its own services, jobs, configuration changes, and security events. These are operational observability and self-security functions; they do not make authorization decisions or provide continuous authorization telemetry.
 
 This is a strong demo point because it shows the platform being used on itself.
 
@@ -530,7 +532,7 @@ What this means product-wise:
 - to system inference
 - to remediation
 - to export
-- to live telemetry posture
+- to optional security-posture review
 
 inside one application.
 
@@ -546,7 +548,7 @@ The codebase has clear separation between:
 - adjudication policy
 - remediation
 - assistant
-- telemetry
+- operational observability
 - export
 
 ### 12.2 Better-than-average AI governance pattern
@@ -557,9 +559,9 @@ The system does not simply trust the model to make final compliance decisions. I
 
 The move from raw documents to parsed lines to evidence units is one of the strongest technical choices in the platform.
 
-### 12.4 Built-in path from point-in-time assessment to continuous posture
+### 12.4 Operational observability around point-in-time assessment
 
-The integration and telemetry layers create a credible path from static artifact review to continuous ATO support.
+The application records service health, job state, audit activity, configuration changes, and processing failures so operators can understand whether the assessment workflow is running and whether its records are trustworthy. This is not continuous authorization monitoring.
 
 ### 12.5 Investor-friendly extensibility
 
@@ -576,11 +578,11 @@ This is a large surface area for a product at this stage:
 - ingestion
 - assessment
 - closure
-- telemetry
+- optional security-posture data
 - assistant
 - reporting
 - SSP
-- cATO
+- optional security-posture integrations
 
 For investors, this should be framed as a platform opportunity, but for demos it means you should focus hard on the few strongest workflows.
 
@@ -588,9 +590,9 @@ For investors, this should be framed as a platform opportunity, but for demos it
 
 The code still maintains legacy chunk/tag compatibility alongside the newer evidence-unit model. That is understandable, but it means the architecture is in transition.
 
-### 13.3 Some cATO integrations are still scaffolding-oriented
+### 13.3 Optional security-posture integrations are still scaffolding-oriented
 
-The connector framework is real, but parts of the current UX and service language still describe dry-run or planned states. It should be presented as an expansion lane, not oversold as fully mature production telemetry coverage.
+The connector framework is real, but parts of the current UX and service language still describe dry-run or planned states. It should be presented as a disabled expansion lane, not oversold as mature operational observability or continuous authorization monitoring.
 
 ### 13.4 Large startup/lifespan responsibility in `main.py`
 
@@ -604,7 +606,7 @@ Because the product does many things, it would be easy to demo it as "complex" i
 
 The cleanest way to describe ATO Bot is:
 
-> ATO Bot is an AI-assisted compliance operations platform that converts raw security artifacts into traceable evidence, performs assessor-aligned control evaluation, supports human review and remediation, and lays the foundation for continuous authorization posture.
+> ATO Bot is an AI-assisted compliance operations platform that converts raw security artifacts into traceable evidence, performs assessor-aligned control evaluation, supports human review and remediation, and records the operational signals needed to run that workflow reliably.
 
 That is stronger than calling it:
 
@@ -624,7 +626,7 @@ Use this sequence:
 3. ATO Bot turns documents into structured evidence with provenance.
 4. ATO Bot evaluates controls in stages and keeps the model inside a governed workflow.
 5. Analysts can review, challenge, override, remediate, and export.
-6. The same platform extends toward live telemetry and continuous ATO.
+6. Optional security-posture integrations remain a separately gated expansion area and are not part of the supported assessment claim.
 
 That sequence matches the repo better than a generic "AI for compliance" pitch.
 
@@ -645,7 +647,7 @@ If you only show a few screens, I would prioritize:
 4. `SSP Workbench`
 - shows downstream document production and operational utility
 
-5. `cATO Dashboard` or `Live Integrations`
+5. Optional security-posture integrations
 - show as "where this platform is going next" and only if the data is clean enough
 
 ## 17. Bottom Line
@@ -659,6 +661,6 @@ ATO Bot already contains the architecture of a serious compliance platform:
 - human review and remediation
 - reporting and OSCAL export
 - system architecture inference
-- early continuous authorization telemetry primitives
+- disabled security-posture integration primitives
 
 The strongest part of the platform is not any one LLM call. It is the staged evidence and adjudication architecture that puts those model calls inside a governed compliance workflow.

@@ -119,7 +119,7 @@ Available output families include Word, Excel, JSON, SAR-oriented, SSP-oriented,
 
 ## 16. Unsupported or Human-Required Activities
 
-ATO Bot does not replace assessor judgment, independently conduct interviews, automatically perform technical tests, establish organizational risk tolerance, accept residual risk, or make an authorization decision. External connectors, continuous telemetry, and cATO-oriented surfaces remain experimental or disabled by default. See [Limitations](LIMITATIONS.md) and [Experimental Capabilities](EXPERIMENTAL_CAPABILITIES.md).
+ATO Bot does not replace assessor judgment, independently conduct interviews, automatically perform technical tests, establish organizational risk tolerance, accept residual risk, or make an authorization decision. External connectors and optional security-posture surfaces remain experimental or disabled by default. Operational observability in the supported product refers to application health, job state, audit activity, and processing status; it is not cATO telemetry. See [Limitations](LIMITATIONS.md) and [Experimental Capabilities](EXPERIMENTAL_CAPABILITIES.md).
 
 ## Screenshot Reference
 

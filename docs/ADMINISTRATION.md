@@ -28,7 +28,7 @@ Do not change a production-like runtime or prompt in the middle of an assessment
 
 `GET /api/meta/features` is the authoritative runtime feature registry. It reports supported, beta, experimental, deprecated, and disabled capabilities. The frontend should not advertise a feature that the registry disables.
 
-Experimental connector, telemetry, and cATO-oriented capabilities are disabled by default and are not part of the supported release claim. See [FEATURE_STATUS.md](FEATURE_STATUS.md) and [EXPERIMENTAL_CAPABILITIES.md](EXPERIMENTAL_CAPABILITIES.md).
+Experimental connector and optional security-posture capabilities are disabled by default and are not part of the supported release claim. Operational observability in the supported product means application health, job state, audit activity, configuration changes, and processing status. See [FEATURE_STATUS.md](FEATURE_STATUS.md) and [EXPERIMENTAL_CAPABILITIES.md](EXPERIMENTAL_CAPABILITIES.md).
 
 ## Audit and Security Operations
 

@@ -12,7 +12,7 @@ ATO Bot is a human-in-the-loop NIST SP 800-53 assessment platform. It does not r
 
 ## Operational Boundary
 
-- External connectors, continuous telemetry, and the cATO dashboard are experimental and disabled by default.
+- External connectors, optional security-posture snapshots, drift collection, and the cATO dashboard are experimental and disabled by default. They are not part of the supported assessment workflow.
 - Calibration and synthetic-data capabilities are beta and must not be confused with operational evidence.
 - OSCAL schema validity does not prove that required assessment activities actually occurred.
 - Carry-forward is opt-in and is allowed only when evidence scope, policy version, model, and execution mode match.

@@ -34,4 +34,4 @@
 
 - Model providers may retain or process submitted evidence according to their own service terms. Operators must select and configure providers appropriate to data sensitivity.
 - A privileged database or host administrator can alter data outside application controls. Production deployments require infrastructure audit, backup, and access controls.
-- Experimental connector and telemetry paths have not completed the same maturity gate as core assessment functions and remain disabled by default.
+- Experimental connector and optional security-posture paths have not completed the same maturity gate as core assessment functions and remain disabled by default. They must not be interpreted as continuous authorization monitoring.

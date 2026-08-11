@@ -2,6 +2,8 @@
 
 This is the disposition ledger for capabilities that are not part of ATO Bot's supported open-source core. The code is preserved during maturity work. Nothing in this document authorizes deletion.
 
+Terminology note: the tables below retain legacy runtime keys and database names for traceability. In maintained product documentation, the supported application's own health, job, audit, and processing signals are called **operational observability**. The optional subsystem listed here is **security-posture collection and drift scaffolding**; it is disabled by default and is not cATO or continuous authorization telemetry.
+
 Runtime maturity and enablement are published by `GET /api/meta/features`. The backend registry is authoritative; a disabled backend capability cannot be exposed by a frontend build option.
 
 ## Disposition Rules
@@ -29,7 +31,7 @@ Final decisions are deferred until the P0/P1 cleanup is complete. Each item will
 | Known gaps | Several connectors support dry-run/scaffold behavior rather than complete provider APIs; provider-specific authentication, pagination, failure semantics, and test coverage are incomplete. |
 | Removal impact | Removes connector configuration and imported posture history. Security telemetry not sourced through integrations can remain. |
 
-## Experimental: Continuous Telemetry and Drift
+## Experimental: Security-Posture Collection and Drift Scaffolding
 
 | Attribute | Inventory |
 | --- | --- |
@@ -40,7 +42,7 @@ Final decisions are deferred until the P0/P1 cleanup is complete. Each item will
 | Services | `app/services/security_telemetry.py`, `app/services/ato_bot_security.py`, collector ingestion services |
 | Tables | `security_collectors`, `security_collector_nonces`, `security_assets`, `security_scans`, `security_findings`, `security_recommendations`, `security_build_snapshots`, `security_runtime_snapshots`, `security_tracked_settings`, `security_setting_history`, `security_change_events` |
 | Dependencies | Signed collector payloads, Docker/runtime inspection, integration data, project access controls |
-| Known gaps | Monitoring coverage and source semantics vary by deployment. The present surface cannot support a general continuous-authorization claim. Collector and container-security paths need independent threat modeling and broader tests. |
+| Known gaps | Security-posture coverage and source semantics vary by deployment. The present surface cannot support a general continuous-authorization claim. Collector and container-security paths need independent threat modeling and broader tests. |
 | Removal impact | Removes continuous posture, drift, collector, and tactical security views. Core evidence ingestion and point-in-time assessment remain. |
 
 ## Experimental: cATO Dashboard

@@ -84,7 +84,7 @@ This is important because it means the system already thinks of AI usage as name
 17. Remediation artifact generation
 18. Synthetic test dataset generation
 19. Human-style artifact generation
-20. Security telemetry guidance generation
+20. Optional security-posture guidance generation
 
 ### Adjacent orchestration flows that are important but not currently LLM-first
 
@@ -750,7 +750,7 @@ Its goal is to generate documents that read more like real human-authored operat
 
 This is the "write a believable artifact, not a robotic crosswalk" engine.
 
-## 21. Security Telemetry Guidance Generation
+## 21. Optional Security-Posture Guidance Generation
 
 ### Entry point
 
@@ -762,8 +762,8 @@ This is the "write a believable artifact, not a robotic crosswalk" engine.
 
 ### What it does
 
-Most of the telemetry system is deterministic.
-But when security findings are being finalized, the system can ask the model to turn structured evidence into clearer operator-facing guidance.
+Most of this optional security-posture subsystem is deterministic.
+When it is enabled, the system can ask the model to turn structured security findings into clearer operator-facing guidance. It is separate from the supported 800-53 assessment engine and is not a continuous-authorization capability.
 
 ### Inputs
 
@@ -783,7 +783,7 @@ But when security findings are being finalized, the system can ask the model to 
 
 ### Human explanation
 
-This is a translator flow: from structured security facts into a cleaner remediation narrative.
+This is a translator flow: from structured security facts into a cleaner remediation narrative. It should be described as optional security-posture guidance, not cATO telemetry.
 
 ## 22. System Knowledge Extraction
 
@@ -892,7 +892,7 @@ The most important human checkpoints are:
 - artifact approval workflow
 - confirmation/rejection of system knowledge assertions
 - review of generated SSP text
-- review of telemetry findings and recommendations
+- review of optional security-posture findings and recommendations
 
 This matters because ATO Bot is not trying to remove the human assessor or ISSO. It is trying to accelerate and structure their workflow.
 
@@ -919,7 +919,7 @@ The strongest deterministic layers are:
 - calibration
 - SSP section composition
 - system knowledge pattern extraction
-- telemetry posture aggregation
+- optional security-posture aggregation
 
 This is a strength, not a weakness.
 It means the system is using AI where interpretation helps, and code where control and reproducibility matter more.
@@ -947,7 +947,7 @@ That offers flexibility, but it also means presentation and product strategy sho
 
 ### 29.4 Some inference layers are still transitional
 
-System knowledge and parts of cATO are strategically important, but some are still scaffolding or deterministic-first implementations rather than deeply model-driven ones.
+System knowledge and the optional security-posture subsystem are strategically separate from the assessment core, and some parts remain scaffolding or deterministic-first implementations rather than deeply model-driven ones.
 
 ## 30. Plain-English Bottom Line
 
