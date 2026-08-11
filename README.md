@@ -212,8 +212,9 @@ Copy-Item backend/.env.example backend/.env
 # Set strong values for every CHANGE_ME entry and configure one model provider.
 $env:ATOBOT_IMAGE_TAG = "v0.1.0"
 docker login ghcr.io
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml build postgres
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull migrate backend worker frontend redis
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
 docker compose ps
 ```
 

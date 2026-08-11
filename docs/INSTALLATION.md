@@ -40,9 +40,12 @@ Copy-Item backend/.env.example backend/.env
 $env:ATOBOT_IMAGE_TAG = "v0.1.0"
 docker login ghcr.io
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml config --quiet
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml build postgres
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull migrate backend worker frontend redis
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
 ```
+
+PostgreSQL is intentionally built from the repository's pinned local image definition; the backend, migration, worker, and frontend images are pulled from GHCR.
 
 Images:
 

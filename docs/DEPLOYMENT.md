@@ -27,9 +27,12 @@ The backend image is reused for the migration and worker services. PostgreSQL an
 $env:ATOBOT_IMAGE_NAMESPACE = "drdeathlabs"
 $env:ATOBOT_IMAGE_TAG = "v0.1.0"
 docker login ghcr.io
-docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml build postgres
+docker compose -f docker-compose.yml -f docker-compose.ghcr.yml pull migrate backend worker frontend redis
 docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up -d --no-build
 ```
+
+PostgreSQL is intentionally built from the repository's pinned local image definition; the backend, migration, worker, and frontend images are pulled from GHCR.
 
 Use immutable version tags for repeatable deployments. `latest` is convenient for evaluation but should not be used for a controlled assessment environment.
 
