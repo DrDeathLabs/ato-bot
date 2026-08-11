@@ -224,6 +224,8 @@ docker compose -f docker-compose.yml -f docker-compose.ghcr.yml exec backend pyt
 
 The seed command prompts for the administrator password. Open `http://127.0.0.1:3001` after the migration service exits successfully and the remaining services are healthy. See [Installation](docs/INSTALLATION.md) for environment details and health validation.
 
+[Watch the ATO Bot installation tutorial video](docs/assets/ATO_Bot_Installation_Tutorial_2026-08-10.mp4)
+
 ## Install From Source
 
 ```powershell
